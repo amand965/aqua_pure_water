@@ -60,11 +60,14 @@ class AppUpdateService {
     }
   }
 
-  // Compare semantic version numbers (e.g., "1.0.1" > "1.0.0")
+  // Compare semantic version numbers (e.g., "1.0.1" > "1.0.0" or "v1.0.2" > "1.0.0")
   bool isVersionGreater(String latest, String current) {
     try {
-      List<int> latestParts = latest.split('.').map((e) => int.tryParse(e) ?? 0).toList();
-      List<int> currentParts = current.split('.').map((e) => int.tryParse(e) ?? 0).toList();
+      final cleanLatest = latest.replaceAll(RegExp(r'[^0-9\.]'), '');
+      final cleanCurrent = current.replaceAll(RegExp(r'[^0-9\.]'), '');
+
+      List<int> latestParts = cleanLatest.split('.').map((e) => int.tryParse(e) ?? 0).toList();
+      List<int> currentParts = cleanCurrent.split('.').map((e) => int.tryParse(e) ?? 0).toList();
 
       int maxLength = latestParts.length > currentParts.length ? latestParts.length : currentParts.length;
 

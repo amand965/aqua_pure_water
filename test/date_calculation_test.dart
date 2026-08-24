@@ -118,4 +118,31 @@ void main() {
       expect(parsed, isNull);
     });
   });
+
+  group('Semantic Version Comparison Tests', () {
+    bool isVersionGreater(String latest, String current) {
+      final cleanLatest = latest.replaceAll(RegExp(r'[^0-9\.]'), '');
+      final cleanCurrent = current.replaceAll(RegExp(r'[^0-9\.]'), '');
+
+      List<int> latestParts = cleanLatest.split('.').map((e) => int.tryParse(e) ?? 0).toList();
+      List<int> currentParts = cleanCurrent.split('.').map((e) => int.tryParse(e) ?? 0).toList();
+
+      int maxLength = latestParts.length > currentParts.length ? latestParts.length : currentParts.length;
+
+      for (int i = 0; i < maxLength; i++) {
+        int latestNum = i < latestParts.length ? latestParts[i] : 0;
+        int currentNum = i < currentParts.length ? currentParts[i] : 0;
+
+        if (latestNum > currentNum) return true;
+        if (latestNum < currentNum) return false;
+      }
+      return false;
+    }
+
+    test('Should handle v prefix in version comparison', () {
+      expect(isVersionGreater('v1.0.1', '1.0.0'), isTrue);
+      expect(isVersionGreater('v1.0.2', '1.0.1'), isTrue);
+      expect(isVersionGreater('1.0.1', 'v1.0.1'), isFalse);
+    });
+  });
 }
