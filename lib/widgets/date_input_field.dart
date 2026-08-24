@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
 import '../theme/app_theme.dart';
 
@@ -162,11 +163,14 @@ class _DateInputFieldState extends State<DateInputField> {
       ),
       child: TextFormField(
         controller: _controller,
-        keyboardType: TextInputType.datetime,
+        keyboardType: TextInputType.number,
+        inputFormatters: [
+          _DateTextInputFormatter(),
+        ],
         decoration: InputDecoration(
           labelText: widget.label,
           hintText: widget.hint,
-          helperText: 'Type date (DD/MM/YYYY) or tap calendar icon',
+          helperText: 'Type digits (e.g. 15042026) or tap calendar icon',
           prefixIcon: const Icon(Icons.calendar_month_rounded, color: AppTheme.primaryBlue),
           suffixIcon: Row(
             mainAxisSize: MainAxisSize.min,
@@ -201,6 +205,40 @@ class _DateInputFieldState extends State<DateInputField> {
           return null;
         },
       ),
+    );
+  }
+}
+
+/// Custom TextInputFormatter that automatically inserts slashes ('/') as the user types digits.
+class _DateTextInputFormatter extends TextInputFormatter {
+  @override
+  TextEditingValue formatEditUpdate(
+    TextEditingValue oldValue,
+    TextEditingValue newValue,
+  ) {
+    // Allow deleting / backspace without auto-reinserting slash
+    if (oldValue.text.length >= newValue.text.length) {
+      return newValue;
+    }
+
+    // Keep only digits
+    final clean = newValue.text.replaceAll(RegExp(r'\D'), '');
+    if (clean.length > 8) {
+      return oldValue;
+    }
+
+    final buffer = StringBuffer();
+    for (int i = 0; i < clean.length; i++) {
+      if (i == 2 || i == 4) {
+        buffer.write('/');
+      }
+      buffer.write(clean[i]);
+    }
+
+    final formatted = buffer.toString();
+    return TextEditingValue(
+      text: formatted,
+      selection: TextSelection.collapsed(offset: formatted.length),
     );
   }
 }
