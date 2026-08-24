@@ -8,6 +8,8 @@ import '../../providers/customer_provider.dart';
 import '../../theme/app_theme.dart';
 import '../service/add_service_screen.dart';
 import 'add_edit_customer_screen.dart';
+import '../../widgets/extend_pause_service_dialog.dart';
+import '../../widgets/safe_tap.dart';
 
 class CustomerDetailsScreen extends StatelessWidget {
   final String customerId;
@@ -101,24 +103,46 @@ class CustomerDetailsScreen extends StatelessWidget {
             // Communication Quick Actions
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
-              child: Row(
+              child: Column(
                 children: [
-                  Expanded(
-                    child: OutlinedButton.icon(
-                      icon: const Icon(Icons.phone_rounded),
-                      label: const Text('CALL'),
-                      onPressed: () => _launchCall(context, customer.mobile),
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: ElevatedButton.icon(
-                      icon: const Icon(Icons.message_rounded),
-                      label: const Text('WHATSAPP'),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: AppTheme.statusCompleted,
+                  Row(
+                    children: [
+                      Expanded(
+                        child: OutlinedButton.icon(
+                          icon: const Icon(Icons.phone_rounded),
+                          label: const Text('CALL'),
+                          onPressed: () => _launchCall(context, customer.mobile),
+                        ),
                       ),
-                      onPressed: () => _launchWhatsApp(context, customer.mobile, customer.name),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: ElevatedButton.icon(
+                          icon: const Icon(Icons.message_rounded),
+                          label: const Text('WHATSAPP'),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: AppTheme.statusCompleted,
+                          ),
+                          onPressed: () => _launchWhatsApp(context, customer.mobile, customer.name),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  SizedBox(
+                    width: double.infinity,
+                    child: OutlinedButton.icon(
+                      icon: const Icon(Icons.update_rounded, color: AppTheme.statusDueToday),
+                      label: Text(
+                        customer.amcStatus == 'Paused' || customer.amcStatus == 'Stopped'
+                            ? 'RESUME / MANAGE SERVICE SCHEDULE'
+                            : 'EXTEND / PAUSE SERVICE SCHEDULE',
+                        style: const TextStyle(color: AppTheme.statusDueToday, fontSize: 13),
+                      ),
+                      style: OutlinedButton.styleFrom(
+                        side: const BorderSide(color: AppTheme.statusDueToday, width: 1.5),
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                      ),
+                      onPressed: () => ExtendPauseServiceDialog.show(context, customer),
                     ),
                   ),
                 ],
@@ -551,6 +575,7 @@ class CustomerDetailsScreen extends StatelessWidget {
               ),
               child: const Text('Delete'),
               onPressed: () async {
+                if (!SafeTap.canTap(1000)) return; // Prevent double delete
                 Navigator.of(context).pop(); // pop dialog
                 Navigator.of(context).pop(); // pop details screen
                 await provider.deleteCustomer(customer.id);

@@ -27,16 +27,24 @@ class CustomerProvider with ChangeNotifier {
   bool get isLoading => _isLoading;
   String? get errorMessage => _errorMessage;
 
-  // Filtered Getters
+  // Filtered Getters (excludes Paused or Stopped services)
   List<Customer> get todayDueCustomers {
     final today = DateTime.now();
-    return _customers.where((c) => _isSameDay(c.nextServiceDate, today)).toList();
+    return _customers.where((c) => 
+      c.amcStatus != 'Paused' && 
+      c.amcStatus != 'Stopped' && 
+      _isSameDay(c.nextServiceDate, today)
+    ).toList();
   }
 
   List<Customer> get overdueCustomers {
     final today = DateTime.now();
     final startOfToday = DateTime(today.year, today.month, today.day);
-    return _customers.where((c) => c.nextServiceDate.isBefore(startOfToday)).toList();
+    return _customers.where((c) => 
+      c.amcStatus != 'Paused' && 
+      c.amcStatus != 'Stopped' && 
+      c.nextServiceDate.isBefore(startOfToday)
+    ).toList();
   }
 
   List<Customer> get upcomingCustomers {
@@ -45,9 +53,15 @@ class CustomerProvider with ChangeNotifier {
     final upcomingLimit = startOfToday.add(const Duration(days: 30));
     
     return _customers.where((c) => 
+      c.amcStatus != 'Paused' && 
+      c.amcStatus != 'Stopped' && 
       c.nextServiceDate.isAfter(startOfToday) && 
       (c.nextServiceDate.isBefore(upcomingLimit) || _isSameDay(c.nextServiceDate, upcomingLimit))
     ).toList();
+  }
+
+  List<Customer> get pausedOrStoppedCustomers {
+    return _customers.where((c) => c.amcStatus == 'Paused' || c.amcStatus == 'Stopped').toList();
   }
 
   List<Customer> get recentCustomers {
@@ -63,8 +77,21 @@ class CustomerProvider with ChangeNotifier {
 
   // Initialize streams
   void _initializeServices() async {
-    await _notificationService.initialize();
+    try {
+      await _notificationService.initialize();
+    } catch (e) {
+      debugPrint("Notification service initialization error: $e");
+    }
     
+    // Safety fallback: Ensure _isLoading becomes false within 2.5 seconds
+    // to prevent getting stuck on the loading indicator during network delays.
+    Future.delayed(const Duration(milliseconds: 2500), () {
+      if (_isLoading) {
+        _isLoading = false;
+        notifyListeners();
+      }
+    });
+
     // Subscribe to customers stream
     _customersSubscription = _dbService.getCustomersStream().listen(
       (customerList) {
@@ -72,14 +99,11 @@ class CustomerProvider with ChangeNotifier {
         _isLoading = false;
         _errorMessage = null;
         notifyListeners();
-        
-        // Trigger notification check when customer records update
-        // _triggerDueServicesNotification();
       },
       onError: (error) {
         debugPrint("Firestore stream subscription error: $error. Falling back to local memory database.");
         _isLoading = false;
-        _errorMessage = null; // Prevent showing blocking error screen
+        _errorMessage = null;
         notifyListeners();
       }
     );
@@ -95,8 +119,12 @@ class CustomerProvider with ChangeNotifier {
       }
     );
 
-    // Schedule daily reminder check
-    await _notificationService.scheduleDailyReminder();
+    // Schedule daily reminder check safely
+    try {
+      await _notificationService.scheduleDailyReminder();
+    } catch (e) {
+      debugPrint("Schedule daily reminder failed: $e");
+    }
   }
 
   // Trigger local notification for due services
@@ -158,6 +186,71 @@ class CustomerProvider with ChangeNotifier {
     _completedServicesThisMonth.removeWhere((s) => s.customerId == customerId);
     // _triggerDueServicesNotification();
     notifyListeners();
+  }
+
+  // Extend Next Service Date by 1-4 months
+  Future<void> extendCustomerService(Customer customer, int extendMonths, String reason) async {
+    try {
+      await _dbService.extendCustomerService(customer, extendMonths, reason);
+    } catch (e) {
+      debugPrint("Firebase service extension failed: $e. Updating locally in memory.");
+    }
+
+    final currentNext = customer.nextServiceDate;
+    final baseDate = currentNext.isBefore(DateTime.now()) ? DateTime.now() : currentNext;
+    final newNextDate = DateTime(
+      baseDate.year,
+      baseDate.month + extendMonths,
+      baseDate.day,
+    );
+
+    final timestampStr = "${DateTime.now().day}/${DateTime.now().month}/${DateTime.now().year}";
+    final extensionNote = "[$timestampStr] Extended service by $extendMonths month(s). Reason: $reason";
+    final updatedNotes = customer.notes.trim().isEmpty 
+        ? extensionNote 
+        : "${customer.notes}\n$extensionNote";
+
+    final updatedCustomer = customer.copyWith(
+      nextServiceDate: newNextDate,
+      notes: updatedNotes,
+      amcStatus: customer.amcStatus == 'Paused' ? 'Active' : customer.amcStatus,
+    );
+
+    final idx = _customers.indexWhere((c) => c.id == customer.id);
+    if (idx != -1) {
+      _customers[idx] = updatedCustomer;
+      notifyListeners();
+    }
+  }
+
+  // Update Service / AMC Status (Active, Paused, Stopped)
+  Future<void> updateCustomerServiceStatus(Customer customer, String newStatus, {String? reason}) async {
+    try {
+      await _dbService.updateCustomerServiceStatus(customer, newStatus, reason: reason);
+    } catch (e) {
+      debugPrint("Firebase status update failed: $e. Updating locally in memory.");
+    }
+
+    final timestampStr = "${DateTime.now().day}/${DateTime.now().month}/${DateTime.now().year}";
+    String updatedNotes = customer.notes;
+    
+    if (reason != null && reason.trim().isNotEmpty) {
+      final statusNote = "[$timestampStr] Status changed to $newStatus. Reason: $reason";
+      updatedNotes = customer.notes.trim().isEmpty 
+          ? statusNote 
+          : "${customer.notes}\n$statusNote";
+    }
+
+    final updatedCustomer = customer.copyWith(
+      amcStatus: newStatus,
+      notes: updatedNotes,
+    );
+
+    final idx = _customers.indexWhere((c) => c.id == customer.id);
+    if (idx != -1) {
+      _customers[idx] = updatedCustomer;
+      notifyListeners();
+    }
   }
 
   // Record a completed service

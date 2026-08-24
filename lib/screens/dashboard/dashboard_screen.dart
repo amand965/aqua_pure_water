@@ -11,9 +11,32 @@ import '../customer/customer_details_screen.dart';
 import '../customer/search_customer_screen.dart';
 import '../due_services/due_services_screen.dart';
 import '../reports/reports_screen.dart';
+import '../../services/app_update_service.dart';
+import '../../widgets/update_dialog.dart';
+import '../../widgets/safe_tap.dart';
 
-class DashboardScreen extends StatelessWidget {
+class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
+
+  @override
+  State<DashboardScreen> createState() => _DashboardScreenState();
+}
+
+class _DashboardScreenState extends State<DashboardScreen> {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _checkForUpdates();
+    });
+  }
+
+  Future<void> _checkForUpdates() async {
+    final updateInfo = await AppUpdateService().checkAppUpdate();
+    if (updateInfo != null && updateInfo.hasUpdate && mounted) {
+      UpdateDialog.show(context, updateInfo);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -78,44 +101,44 @@ class DashboardScreen extends StatelessWidget {
                             value: '${customerProvider.customers.length}',
                             icon: Icons.people_rounded,
                             color: AppTheme.primaryBlue,
-                            onTap: () => Navigator.push(
+                            onTap: SafeTap.wrap(() => Navigator.push(
                               context,
                               MaterialPageRoute(builder: (_) => const SearchCustomerScreen()),
-                            ),
+                            ))!,
                           ),
                           SummaryCard(
                             title: "Today's Due",
                             value: '${customerProvider.todayDueCustomers.length}',
                             icon: Icons.calendar_today_rounded,
                             color: AppTheme.statusDueToday,
-                            onTap: () => Navigator.push(
+                            onTap: SafeTap.wrap(() => Navigator.push(
                               context,
                               MaterialPageRoute(
                                 builder: (_) => const DueServicesScreen(initialIndex: 0),
                               ),
-                            ),
+                            ))!,
                           ),
                           SummaryCard(
                             title: 'Overdue Services',
                             value: '${customerProvider.overdueCustomers.length}',
                             icon: Icons.warning_amber_rounded,
                             color: AppTheme.statusOverdue,
-                            onTap: () => Navigator.push(
+                            onTap: SafeTap.wrap(() => Navigator.push(
                               context,
                               MaterialPageRoute(
                                 builder: (_) => const DueServicesScreen(initialIndex: 2),
                               ),
-                            ),
+                            ))!,
                           ),
                           SummaryCard(
                             title: 'Completed (Month)',
                             value: '${customerProvider.completedServicesThisMonthCount}',
                             icon: Icons.assignment_turned_in_rounded,
                             color: AppTheme.statusCompleted,
-                            onTap: () => Navigator.push(
+                            onTap: SafeTap.wrap(() => Navigator.push(
                               context,
                               MaterialPageRoute(builder: (_) => const ReportsScreen()),
-                            ),
+                            ))!,
                           ),
                         ],
                       ),
@@ -141,40 +164,40 @@ class DashboardScreen extends StatelessWidget {
                             label: 'Add Customer',
                             icon: Icons.person_add_rounded,
                             color: AppTheme.primaryBlue,
-                            onTap: () => Navigator.push(
+                            onTap: SafeTap.wrap(() => Navigator.push(
                               context,
                               MaterialPageRoute(builder: (_) => const AddEditCustomerScreen()),
-                            ),
+                            ))!,
                           ),
                           _buildQuickActionButton(
                             context,
                             label: 'Search',
                             icon: Icons.search_rounded,
                             color: Colors.teal,
-                            onTap: () => Navigator.push(
+                            onTap: SafeTap.wrap(() => Navigator.push(
                               context,
                               MaterialPageRoute(builder: (_) => const SearchCustomerScreen()),
-                            ),
+                            ))!,
                           ),
                           _buildQuickActionButton(
                             context,
                             label: 'Due Services',
                             icon: Icons.alarm_rounded,
                             color: AppTheme.statusDueToday,
-                            onTap: () => Navigator.push(
+                            onTap: SafeTap.wrap(() => Navigator.push(
                               context,
                               MaterialPageRoute(builder: (_) => const DueServicesScreen()),
-                            ),
+                            ))!,
                           ),
                           _buildQuickActionButton(
                             context,
                             label: 'Reports',
                             icon: Icons.analytics_rounded,
                             color: Colors.indigo,
-                            onTap: () => Navigator.push(
+                            onTap: SafeTap.wrap(() => Navigator.push(
                               context,
                               MaterialPageRoute(builder: (_) => const ReportsScreen()),
-                            ),
+                            ))!,
                           ),
                         ],
                       ),

@@ -7,6 +7,8 @@ import 'package:firebase_storage/firebase_storage.dart';
 import '../../models/customer.dart';
 import '../../providers/customer_provider.dart';
 import '../../theme/app_theme.dart';
+import '../../widgets/date_input_field.dart';
+import '../../widgets/safe_tap.dart';
 
 class AddEditCustomerScreen extends StatefulWidget {
   final Customer? customer; // If null, we are in Add mode. If provided, we are in Edit mode.
@@ -124,6 +126,7 @@ class _AddEditCustomerScreenState extends State<AddEditCustomerScreen> {
 
   void _saveCustomer() async {
     if (_isSaving) return; // Prevent double-submit
+    if (!SafeTap.canTap(1000)) return; // Debounce rapid multi-clicks
     if (!_formKey.currentState!.validate()) return;
     
     setState(() {
@@ -396,16 +399,11 @@ class _AddEditCustomerScreenState extends State<AddEditCustomerScreen> {
                     const SizedBox(height: 16.0),
 
                     // Installation Date Picker
-                    _buildDatePickerTile(
-                      label: 'Installation Date',
+                    DateInputField(
+                      label: 'Installation Date*',
                       dateValue: _installationDate,
-                      onTap: () async {
-                        final picked = await showDatePicker(
-                          context: context,
-                          initialDate: _installationDate,
-                          firstDate: DateTime(2000),
-                          lastDate: DateTime.now().add(const Duration(days: 365)),
-                        );
+                      isRequired: true,
+                      onDateChanged: (picked) {
                         if (picked != null) {
                           setState(() {
                             _installationDate = picked;
@@ -414,49 +412,30 @@ class _AddEditCustomerScreenState extends State<AddEditCustomerScreen> {
                         }
                       },
                     ),
-                    const SizedBox(height: 12.0),
+                    const SizedBox(height: 16.0),
 
                     // Last Service Date Picker (Optional)
-                    _buildDatePickerTile(
+                    DateInputField(
                       label: 'Last Service Date',
                       dateValue: _lastServiceDate,
-                      hint: 'No service recorded yet',
+                      hint: 'DD/MM/YYYY (Optional)',
                       allowClear: true,
-                      onTap: () async {
-                        final picked = await showDatePicker(
-                          context: context,
-                          initialDate: _lastServiceDate ?? DateTime.now(),
-                          firstDate: DateTime(2000),
-                          lastDate: DateTime.now(),
-                        );
-                        if (picked != null) {
-                          setState(() {
-                            _lastServiceDate = picked;
-                          });
-                          _recalculateNextServiceDate();
-                        }
-                      },
-                      onClear: () {
+                      onDateChanged: (picked) {
                         setState(() {
-                          _lastServiceDate = null;
+                          _lastServiceDate = picked;
                         });
                         _recalculateNextServiceDate();
                       },
                     ),
-                    const SizedBox(height: 12.0),
+                    const SizedBox(height: 16.0),
 
                     // Next Service Date Picker
-                    _buildDatePickerTile(
+                    DateInputField(
                       label: 'Calculated Next Service Date*',
                       dateValue: _nextServiceDate,
+                      isRequired: true,
                       isHighlighted: true,
-                      onTap: () async {
-                        final picked = await showDatePicker(
-                          context: context,
-                          initialDate: _nextServiceDate,
-                          firstDate: DateTime(2000),
-                          lastDate: DateTime.now().add(const Duration(days: 365 * 5)),
-                        );
+                      onDateChanged: (picked) {
                         if (picked != null) {
                           setState(() {
                             _nextServiceDate = picked;
@@ -464,30 +443,17 @@ class _AddEditCustomerScreenState extends State<AddEditCustomerScreen> {
                         }
                       },
                     ),
-                    const SizedBox(height: 12.0),
+                    const SizedBox(height: 16.0),
 
                     // Warranty Expiry Date Picker (Optional)
-                    _buildDatePickerTile(
+                    DateInputField(
                       label: 'Warranty Expiry Date',
                       dateValue: _warrantyExpiry,
-                      hint: 'No warranty details',
+                      hint: 'DD/MM/YYYY (Optional)',
                       allowClear: true,
-                      onTap: () async {
-                        final picked = await showDatePicker(
-                          context: context,
-                          initialDate: _warrantyExpiry ?? DateTime.now(),
-                          firstDate: DateTime(2000),
-                          lastDate: DateTime.now().add(const Duration(days: 365 * 10)),
-                        );
-                        if (picked != null) {
-                          setState(() {
-                            _warrantyExpiry = picked;
-                          });
-                        }
-                      },
-                      onClear: () {
+                      onDateChanged: (picked) {
                         setState(() {
-                          _warrantyExpiry = null;
+                          _warrantyExpiry = picked;
                         });
                       },
                     ),
@@ -517,77 +483,6 @@ class _AddEditCustomerScreenState extends State<AddEditCustomerScreen> {
                 ),
               ),
             ),
-    );
-  }
-
-  // Date Picker Form Row Widget
-  Widget _buildDatePickerTile({
-    required String label,
-    DateTime? dateValue,
-    String hint = '',
-    bool isHighlighted = false,
-    bool allowClear = false,
-    required VoidCallback onTap,
-    VoidCallback? onClear,
-  }) {
-    final displayString = dateValue != null ? DateFormat('dd MMM yyyy').format(dateValue) : hint;
-    
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(12),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-        decoration: BoxDecoration(
-          color: isHighlighted ? AppTheme.lightBlueBackground : AppTheme.surfaceWhite,
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(
-            color: isHighlighted ? AppTheme.primaryBlue.withOpacity(0.3) : Colors.grey.withOpacity(0.2),
-            width: isHighlighted ? 1.5 : 1,
-          ),
-        ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    label,
-                    style: TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.bold,
-                      color: isHighlighted ? AppTheme.primaryBlue : Colors.grey[600],
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    displayString,
-                    style: TextStyle(
-                      fontSize: 15,
-                      fontWeight: dateValue != null ? FontWeight.bold : FontWeight.normal,
-                      color: dateValue != null ? Colors.black87 : Colors.black38,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            Row(
-              children: [
-                if (allowClear && dateValue != null && onClear != null)
-                  IconButton(
-                    icon: const Icon(Icons.clear_rounded, size: 20, color: Colors.grey),
-                    onPressed: onClear,
-                  ),
-                Icon(
-                  Icons.calendar_month_rounded,
-                  color: isHighlighted ? AppTheme.primaryBlue : Colors.grey[600],
-                ),
-              ],
-            )
-          ],
-        ),
-      ),
     );
   }
 }

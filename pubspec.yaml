@@ -47,6 +47,8 @@ dependencies:
   uuid: ^4.3.3
   shared_preferences: ^2.2.3
   timezone: ^0.9.4
+  package_info_plus: ^8.0.0
+  ota_update: ^6.0.0
 
 dev_dependencies:
   flutter_test:

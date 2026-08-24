@@ -8,7 +8,7 @@ plugins {
 
 android {
     namespace = "com.meetelectronics.aqua_pure_water"
-    compileSdk = flutter.compileSdkVersion
+    compileSdk = 36
     ndkVersion = flutter.ndkVersion
 
     compileOptions {

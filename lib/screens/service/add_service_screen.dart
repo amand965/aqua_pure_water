@@ -8,6 +8,8 @@ import '../../models/customer.dart';
 import '../../models/service_record.dart';
 import '../../providers/customer_provider.dart';
 import '../../theme/app_theme.dart';
+import '../../widgets/date_input_field.dart';
+import '../../widgets/safe_tap.dart';
 
 class AddServiceScreen extends StatefulWidget {
   final Customer customer;
@@ -92,6 +94,8 @@ class _AddServiceScreenState extends State<AddServiceScreen> {
   }
 
   void _saveService() async {
+    if (_isSaving) return; // Prevent double-submit
+    if (!SafeTap.canTap(1000)) return; // Debounce rapid multi-clicks
     if (!_formKey.currentState!.validate()) return;
 
     setState(() {
@@ -198,16 +202,12 @@ class _AddServiceScreenState extends State<AddServiceScreen> {
                     const SizedBox(height: 24.0),
 
                     // Service Date Picker
-                    _buildDatePickerTile(
+                    DateInputField(
                       label: 'Service Completion Date*',
                       dateValue: _serviceDate,
-                      onTap: () async {
-                        final picked = await showDatePicker(
-                          context: context,
-                          initialDate: _serviceDate,
-                          firstDate: DateTime(2000),
-                          lastDate: DateTime.now(),
-                        );
+                      isRequired: true,
+                      lastDate: DateTime.now().add(const Duration(days: 365)),
+                      onDateChanged: (picked) {
                         if (picked != null) {
                           setState(() {
                             _serviceDate = picked;
@@ -316,7 +316,7 @@ class _AddServiceScreenState extends State<AddServiceScreen> {
 
                     // Submit Button
                     ElevatedButton(
-                      onPressed: _saveService,
+                      onPressed: _isSaving ? null : SafeTap.wrap(_saveService),
                       child: const Text('SUBMIT & MARK COMPLETED'),
                     ),
                     const SizedBox(height: 24),
@@ -381,42 +381,6 @@ class _AddServiceScreenState extends State<AddServiceScreen> {
             ],
           );
         },
-      ),
-    );
-  }
-
-  Widget _buildDatePickerTile({
-    required String label,
-    required DateTime dateValue,
-    required VoidCallback onTap,
-  }) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(12),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-        decoration: BoxDecoration(
-          color: AppTheme.surfaceWhite,
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: Colors.grey.withOpacity(0.2), width: 1),
-        ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(label, style: const TextStyle(fontSize: 12, color: Colors.grey, fontWeight: FontWeight.bold)),
-                const SizedBox(height: 4),
-                Text(
-                  DateFormat('dd MMM yyyy').format(dateValue),
-                  style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: Colors.black87),
-                ),
-              ],
-            ),
-            const Icon(Icons.calendar_month_rounded, color: AppTheme.primaryBlue)
-          ],
-        ),
       ),
     );
   }

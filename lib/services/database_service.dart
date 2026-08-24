@@ -68,6 +68,48 @@ class DatabaseService {
     await batch.commit();
   }
 
+  // Extend customer next service date by 1 to 4 months
+  Future<void> extendCustomerService(Customer customer, int extendMonths, String reason) async {
+    final currentNext = customer.nextServiceDate;
+    final baseDate = currentNext.isBefore(DateTime.now()) ? DateTime.now() : currentNext;
+    final newNextDate = DateTime(
+      baseDate.year,
+      baseDate.month + extendMonths,
+      baseDate.day,
+    );
+
+    final timestampStr = "${DateTime.now().day}/${DateTime.now().month}/${DateTime.now().year}";
+    final extensionNote = "[$timestampStr] Extended service by $extendMonths month(s). Reason: $reason";
+    final updatedNotes = customer.notes.trim().isEmpty 
+        ? extensionNote 
+        : "${customer.notes}\n$extensionNote";
+
+    await _db.collection('customers').doc(customer.id).update({
+      'nextServiceDate': Timestamp.fromDate(newNextDate),
+      'notes': updatedNotes,
+      'amcStatus': customer.amcStatus == 'Paused' ? 'Active' : customer.amcStatus,
+    });
+  }
+
+  // Update customer AMC / Service status (Active, Paused, Stopped)
+  Future<void> updateCustomerServiceStatus(Customer customer, String newStatus, {String? reason}) async {
+    final timestampStr = "${DateTime.now().day}/${DateTime.now().month}/${DateTime.now().year}";
+    String updatedNotes = customer.notes;
+    
+    if (reason != null && reason.trim().isNotEmpty) {
+      final statusNote = "[$timestampStr] Status changed to $newStatus. Reason: $reason";
+      updatedNotes = customer.notes.trim().isEmpty 
+          ? statusNote 
+          : "${customer.notes}\n$statusNote";
+    }
+
+    await _db.collection('customers').doc(customer.id).update({
+      'amcStatus': newStatus,
+      'notes': updatedNotes,
+    });
+  }
+
+
   // ================= SERVICE RECORDS OPERATIONS =================
 
   // Get Stream of service records for a specific customer

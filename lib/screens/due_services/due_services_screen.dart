@@ -6,6 +6,8 @@ import '../../providers/customer_provider.dart';
 import '../../theme/app_theme.dart';
 import '../customer/customer_details_screen.dart';
 import '../service/add_service_screen.dart';
+import '../../widgets/extend_pause_service_dialog.dart';
+import '../../widgets/safe_tap.dart';
 
 class DueServicesScreen extends StatefulWidget {
   final int initialIndex; // 0: Today, 1: Upcoming, 2: Overdue
@@ -273,7 +275,7 @@ class _DueServicesScreenState extends State<DueServicesScreen> with SingleTicker
                     backgroundColor: AppTheme.primaryBlue.withOpacity(0.1),
                     padding: const EdgeInsets.all(12),
                   ),
-                  onPressed: () => _launchCall(context, customer.mobile),
+                  onPressed: SafeTap.wrap(() => _launchCall(context, customer.mobile)),
                 ),
                 const SizedBox(width: 8),
 
@@ -284,9 +286,21 @@ class _DueServicesScreenState extends State<DueServicesScreen> with SingleTicker
                     backgroundColor: AppTheme.statusCompleted.withOpacity(0.1),
                     padding: const EdgeInsets.all(12),
                   ),
-                  onPressed: () => _launchWhatsApp(context, customer.mobile, customer.name),
+                  onPressed: SafeTap.wrap(() => _launchWhatsApp(context, customer.mobile, customer.name)),
                 ),
-                const SizedBox(width: 12),
+                const SizedBox(width: 8),
+
+                // Extend / Pause Service Button
+                IconButton(
+                  icon: const Icon(Icons.update_rounded, color: AppTheme.statusDueToday),
+                  tooltip: 'Extend or Pause Service',
+                  style: IconButton.styleFrom(
+                    backgroundColor: AppTheme.statusDueToday.withOpacity(0.1),
+                    padding: const EdgeInsets.all(12),
+                  ),
+                  onPressed: SafeTap.wrap(() => ExtendPauseServiceDialog.show(context, customer)),
+                ),
+                const SizedBox(width: 8),
 
                 // Mark Done Shortcut
                 Expanded(
@@ -296,14 +310,14 @@ class _DueServicesScreenState extends State<DueServicesScreen> with SingleTicker
                     style: ElevatedButton.styleFrom(
                       padding: const EdgeInsets.symmetric(vertical: 12.0),
                     ),
-                    onPressed: () {
+                    onPressed: SafeTap.wrap(() {
                       Navigator.push(
                         context,
                         MaterialPageRoute(
                           builder: (_) => AddServiceScreen(customer: customer),
                         ),
                       );
-                    },
+                    }),
                   ),
                 ),
               ],

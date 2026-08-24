@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:timezone/data/latest_all.dart' as tz;
 import 'package:timezone/timezone.dart' as tz;
@@ -98,17 +99,21 @@ class NotificationService {
     await _localNotificationsPlugin.cancel(1);
 
     // Schedule for 9:00 AM daily
-    await _localNotificationsPlugin.zonedSchedule(
-      1,
-      'Meet Electronics Morning Check',
-      'Check today\'s due and overdue RO services.',
-      _nextInstanceOfNineAM(),
-      notificationDetails,
-      androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
-      uiLocalNotificationDateInterpretation:
-          UILocalNotificationDateInterpretation.absoluteTime,
-      matchDateTimeComponents: DateTimeComponents.time,
-    );
+    try {
+      await _localNotificationsPlugin.zonedSchedule(
+        1,
+        'Meet Electronics Morning Check',
+        'Check today\'s due and overdue RO services.',
+        _nextInstanceOfNineAM(),
+        notificationDetails,
+        androidScheduleMode: AndroidScheduleMode.inexact,
+        uiLocalNotificationDateInterpretation:
+            UILocalNotificationDateInterpretation.absoluteTime,
+        matchDateTimeComponents: DateTimeComponents.time,
+      );
+    } catch (e) {
+      debugPrint("Daily notification reminder schedule failed: $e");
+    }
   }
 
   // Helper helper to get next instance of 9:00 AM in local timezone

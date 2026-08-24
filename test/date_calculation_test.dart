@@ -59,5 +59,63 @@ void main() {
       expect(nextServiceDate.month, equals(7)); // July
       expect(nextServiceDate.day, equals(1)); // 1st
     });
+
+    test('Should calculate 1 to 4 months service extensions correctly', () {
+      final baseDate = DateTime(2026, 7, 1);
+      
+      expect(calculateNextServiceDate(baseDate, 1), equals(DateTime(2026, 8, 1)));
+      expect(calculateNextServiceDate(baseDate, 2), equals(DateTime(2026, 9, 1)));
+      expect(calculateNextServiceDate(baseDate, 3), equals(DateTime(2026, 10, 1)));
+      expect(calculateNextServiceDate(baseDate, 4), equals(DateTime(2026, 11, 1)));
+    });
+  });
+
+  group('Manual Date String Parsing Tests', () {
+    DateTime? parseDate(String text) {
+      text = text.trim();
+      if (text.isEmpty) return null;
+      
+      final parts = text.split(RegExp(r'[/\.\-\s]+'));
+      if (parts.length == 3) {
+        int? p1 = int.tryParse(parts[0]);
+        int? p2 = int.tryParse(parts[1]);
+        int? p3 = int.tryParse(parts[2]);
+        if (p1 != null && p2 != null && p3 != null) {
+          int day, month, year;
+          if (p1 > 1000) {
+            year = p1; month = p2; day = p3;
+          } else {
+            day = p1; month = p2; year = p3;
+          }
+          try {
+            final dt = DateTime(year, month, day);
+            if (dt.day == day && dt.month == month && dt.year == year) {
+              return dt;
+            }
+          } catch (_) {}
+        }
+      }
+      return null;
+    }
+
+    test('Should parse DD/MM/YYYY format correctly', () {
+      final parsed = parseDate('15/04/2026');
+      expect(parsed, equals(DateTime(2026, 4, 15)));
+    });
+
+    test('Should parse DD-MM-YYYY format correctly', () {
+      final parsed = parseDate('25-12-2025');
+      expect(parsed, equals(DateTime(2025, 12, 25)));
+    });
+
+    test('Should parse YYYY-MM-DD format correctly', () {
+      final parsed = parseDate('2026-08-24');
+      expect(parsed, equals(DateTime(2026, 8, 24)));
+    });
+
+    test('Should reject invalid dates like 31/02/2026', () {
+      final parsed = parseDate('31/02/2026');
+      expect(parsed, isNull);
+    });
   });
 }

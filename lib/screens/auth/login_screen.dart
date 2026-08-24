@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../providers/auth_provider.dart';
 import '../../theme/app_theme.dart';
+import '../../widgets/safe_tap.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -24,9 +25,10 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   void _handleLogin() async {
-    if (!_formKey.currentState!.validate()) return;
-
     final authProvider = Provider.of<AuthProvider>(context, listen: false);
+    if (authProvider.isLoading) return; // Prevent double submit
+    if (!SafeTap.canTap(1000)) return; // Debounce rapid multi-clicks
+    if (!_formKey.currentState!.validate()) return;
     final success = await authProvider.login(
       _emailController.text,
       _passwordController.text,
