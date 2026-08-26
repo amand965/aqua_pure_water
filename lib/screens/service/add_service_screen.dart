@@ -35,6 +35,7 @@ class _AddServiceScreenState extends State<AddServiceScreen> {
   String _paymentStatus = 'Paid';
   final List<File> _selectedPhotos = [];
   bool _isSaving = false;
+  bool _isConfirmed = false;
 
   @override
   void dispose() {
@@ -93,9 +94,35 @@ class _AddServiceScreenState extends State<AddServiceScreen> {
     return urls;
   }
 
+  Future<void> _showSuccessDialog(BuildContext context, {required String title, required String message}) async {
+    return showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext dialogContext) {
+        return AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          title: Row(
+            children: [
+              const Icon(Icons.check_circle_rounded, color: AppTheme.statusCompleted, size: 28),
+              const SizedBox(width: 10),
+              Text(title, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
+            ],
+          ),
+          content: Text(message, style: const TextStyle(fontSize: 14, color: Colors.black87)),
+          actions: [
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(backgroundColor: AppTheme.statusCompleted),
+              onPressed: () => Navigator.of(dialogContext).pop(),
+              child: const Text('OK / DONE'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
   void _saveService() async {
     if (_isSaving) return; // Prevent double-submit
-    if (!SafeTap.canTap(1000)) return; // Debounce rapid multi-clicks
     if (!_formKey.currentState!.validate()) return;
 
     setState(() {
@@ -127,13 +154,14 @@ class _AddServiceScreenState extends State<AddServiceScreen> {
       await provider.logService(newRecord, widget.customer);
 
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Service logged for ${widget.customer.name}'),
-            backgroundColor: AppTheme.statusCompleted,
-          ),
+        await _showSuccessDialog(
+          context,
+          title: 'Service Logged Successfully!',
+          message: 'Service record completed for ${widget.customer.name} (${widget.customer.productBrand} ${widget.customer.productModel}).',
         );
-        Navigator.pop(context);
+        if (mounted) {
+          Navigator.pop(context);
+        }
       }
     } catch (e) {
       if (mounted) {
@@ -148,6 +176,7 @@ class _AddServiceScreenState extends State<AddServiceScreen> {
       if (mounted) {
         setState(() {
           _isSaving = false;
+          _isConfirmed = false; // Reset confirmation checkbox
         });
       }
     }
@@ -312,11 +341,45 @@ class _AddServiceScreenState extends State<AddServiceScreen> {
                         prefixIcon: Icon(Icons.notes_rounded),
                       ),
                     ),
-                    const SizedBox(height: 32.0),
+                    const SizedBox(height: 24.0),
+
+                    // Confirmation Checkbox Box
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                      decoration: BoxDecoration(
+                        color: _isConfirmed ? AppTheme.statusCompleted.withOpacity(0.08) : Colors.grey[100],
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                          color: _isConfirmed ? AppTheme.statusCompleted.withOpacity(0.4) : Colors.grey[300]!,
+                        ),
+                      ),
+                      child: Row(
+                        children: [
+                          Checkbox(
+                            value: _isConfirmed,
+                            activeColor: AppTheme.statusCompleted,
+                            onChanged: _isSaving
+                                ? null
+                                : (val) {
+                                    setState(() {
+                                      _isConfirmed = val ?? false;
+                                    });
+                                  },
+                          ),
+                          const Expanded(
+                            child: Text(
+                              'I confirm that service work, replaced parts, and charges are verified.',
+                              style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600, color: Colors.black87),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 20.0),
 
                     // Submit Button
                     ElevatedButton(
-                      onPressed: _isSaving ? null : SafeTap.wrap(_saveService),
+                      onPressed: (_isSaving || !_isConfirmed) ? null : SafeTap.wrap(_saveService),
                       child: const Text('SUBMIT & MARK COMPLETED'),
                     ),
                     const SizedBox(height: 24),

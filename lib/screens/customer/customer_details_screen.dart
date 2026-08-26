@@ -436,6 +436,40 @@ class CustomerDetailsScreen extends StatelessWidget {
     );
   }
 
+  void _confirmDeleteService(BuildContext context, ServiceRecord record) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Text('Delete Service Record?', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+        content: Text('Are you sure you want to delete the service record from ${DateFormat('dd MMM yyyy').format(record.serviceDate)}?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('CANCEL'),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: AppTheme.statusOverdue),
+            onPressed: () async {
+              Navigator.pop(ctx);
+              final provider = Provider.of<CustomerProvider>(context, listen: false);
+              await provider.deleteServiceRecord(record.id);
+              if (context.mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('Service record deleted'),
+                    backgroundColor: AppTheme.statusCompleted,
+                  ),
+                );
+              }
+            },
+            child: const Text('DELETE'),
+          ),
+        ],
+      ),
+    );
+  }
+
   // Single card element in the service history timeline
   Widget _buildTimelineItem(BuildContext context, ServiceRecord record, DateFormat dateFormat) {
     final isPaid = record.paymentStatus == 'Paid';
@@ -460,20 +494,32 @@ class CustomerDetailsScreen extends StatelessWidget {
                   dateFormat.format(record.serviceDate),
                   style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14.0),
                 ),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                  decoration: BoxDecoration(
-                    color: (isPaid ? AppTheme.statusCompleted : AppTheme.statusOverdue).withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Text(
-                    record.paymentStatus.toUpperCase(),
-                    style: TextStyle(
-                      color: isPaid ? AppTheme.statusCompleted : AppTheme.statusOverdue,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 11,
+                Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: (isPaid ? AppTheme.statusCompleted : AppTheme.statusOverdue).withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Text(
+                        record.paymentStatus.toUpperCase(),
+                        style: TextStyle(
+                          color: isPaid ? AppTheme.statusCompleted : AppTheme.statusOverdue,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 11,
+                        ),
+                      ),
                     ),
-                  ),
+                    const SizedBox(width: 4),
+                    IconButton(
+                      icon: const Icon(Icons.delete_outline_rounded, size: 18, color: Colors.grey),
+                      padding: EdgeInsets.zero,
+                      constraints: const BoxConstraints(),
+                      tooltip: 'Delete Record',
+                      onPressed: () => _confirmDeleteService(context, record),
+                    ),
+                  ],
                 ),
               ],
             ),

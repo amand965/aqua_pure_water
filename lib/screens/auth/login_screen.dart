@@ -27,7 +27,6 @@ class _LoginScreenState extends State<LoginScreen> {
   void _handleLogin() async {
     final authProvider = Provider.of<AuthProvider>(context, listen: false);
     if (authProvider.isLoading) return; // Prevent double submit
-    if (!SafeTap.canTap(1000)) return; // Debounce rapid multi-clicks
     if (!_formKey.currentState!.validate()) return;
     final success = await authProvider.login(
       _emailController.text,

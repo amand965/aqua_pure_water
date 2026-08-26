@@ -192,6 +192,40 @@ class _ReportsScreenState extends State<ReportsScreen> with SingleTickerProvider
     );
   }
 
+  void _confirmDeleteService(BuildContext context, ServiceRecord service, String customerName) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Text('Delete Service Entry?', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+        content: Text('Are you sure you want to delete the completed service record of ₹${service.charges.toStringAsFixed(0)} for $customerName?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('CANCEL'),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: AppTheme.statusOverdue),
+            onPressed: () async {
+              Navigator.pop(ctx);
+              final provider = Provider.of<CustomerProvider>(context, listen: false);
+              await provider.deleteServiceRecord(service.id);
+              if (context.mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('Service record deleted'),
+                    backgroundColor: AppTheme.statusCompleted,
+                  ),
+                );
+              }
+            },
+            child: const Text('DELETE'),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildCompletedServiceCard(
     BuildContext context, 
     ServiceRecord service, 
@@ -209,16 +243,30 @@ class _ReportsScreenState extends State<ReportsScreen> with SingleTickerProvider
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text(
-                  customerName,
-                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15.0),
-                ),
-                Text(
-                  '₹ ${service.charges.toStringAsFixed(0)}',
-                  style: const TextStyle(
-                    fontWeight: FontWeight.bold,
-                    color: AppTheme.primaryBlue,
+                Expanded(
+                  child: Text(
+                    customerName,
+                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15.0),
                   ),
+                ),
+                Row(
+                  children: [
+                    Text(
+                      '₹ ${service.charges.toStringAsFixed(0)}',
+                      style: const TextStyle(
+                        fontWeight: FontWeight.bold,
+                        color: AppTheme.primaryBlue,
+                      ),
+                    ),
+                    const SizedBox(width: 4),
+                    IconButton(
+                      icon: const Icon(Icons.delete_outline_rounded, size: 18, color: Colors.grey),
+                      padding: EdgeInsets.zero,
+                      constraints: const BoxConstraints(),
+                      tooltip: 'Delete Record',
+                      onPressed: () => _confirmDeleteService(context, service, customerName),
+                    ),
+                  ],
                 ),
               ],
             ),

@@ -58,7 +58,6 @@ class _ExtendPauseServiceDialogState extends State<ExtendPauseServiceDialog> {
 
   Future<void> _handleSave() async {
     if (_isSubmitting) return; // Prevent double-submit
-    if (!SafeTap.canTap(1000)) return; // Debounce rapid multi-clicks
 
     final provider = Provider.of<CustomerProvider>(context, listen: false);
     final reason = _isCustomReason 

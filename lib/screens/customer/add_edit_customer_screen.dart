@@ -43,6 +43,7 @@ class _AddEditCustomerScreenState extends State<AddEditCustomerScreen> {
   File? _selectedImage;
   String? _existingPhotoUrl;
   bool _isSaving = false;
+  bool _isConfirmed = false;
 
   @override
   void initState() {
@@ -124,28 +125,71 @@ class _AddEditCustomerScreenState extends State<AddEditCustomerScreen> {
     }
   }
 
+  Future<void> _showSuccessDialog(BuildContext context, {required String title, required String message}) async {
+    return showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext dialogContext) {
+        return AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          title: Row(
+            children: [
+              const Icon(Icons.check_circle_rounded, color: AppTheme.statusCompleted, size: 28),
+              const SizedBox(width: 10),
+              Text(title, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
+            ],
+          ),
+          content: Text(message, style: const TextStyle(fontSize: 14, color: Colors.black87)),
+          actions: [
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(backgroundColor: AppTheme.statusCompleted),
+              onPressed: () => Navigator.of(dialogContext).pop(),
+              child: const Text('OK / DONE'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
   void _saveCustomer() async {
     if (_isSaving) return; // Prevent double-submit
-    if (!SafeTap.canTap(1000)) return; // Debounce rapid multi-clicks
     if (!_formKey.currentState!.validate()) return;
-    
+
+    final provider = Provider.of<CustomerProvider>(context, listen: false);
+    final isEdit = widget.customer != null;
+    final serialNumInput = _serialNumberController.text.trim();
+
+    // Check unique serial number across the entire system
+    final duplicateMatch = provider.customers.where((c) {
+      final isSameSerial = c.serialNumber.trim().toLowerCase() == serialNumInput.toLowerCase();
+      final isDifferentCustomer = !isEdit || c.id != widget.customer!.id;
+      return isSameSerial && isDifferentCustomer;
+    });
+
+    if (duplicateMatch.isNotEmpty) {
+      final existingCustomer = duplicateMatch.first;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Serial No. "$serialNumInput" is already assigned to ${existingCustomer.name}!'),
+          backgroundColor: AppTheme.statusOverdue,
+          duration: const Duration(seconds: 4),
+        ),
+      );
+      return;
+    }
+
     setState(() {
       _isSaving = true;
     });
 
-    final provider = Provider.of<CustomerProvider>(context, listen: false);
-    final isEdit = widget.customer != null;
     final customerId = widget.customer?.id ?? '';
 
     try {
-      // If adding new, generate local temporary ID or let Firebase do it.
-      // We will perform upload. If offline, the task uploads once online.
       String targetId = customerId;
       String? finalPhotoUrl = _existingPhotoUrl;
 
       if (!isEdit) {
-        // Create an empty reference to get an ID first, so we can upload image to a specific path
-        // We can just use Uuid or database helper
         targetId = DateTime.now().millisecondsSinceEpoch.toString();
       }
 
@@ -161,7 +205,7 @@ class _AddEditCustomerScreenState extends State<AddEditCustomerScreen> {
         address: _addressController.text.trim(),
         productBrand: _productBrandController.text.trim(),
         productModel: _productModelController.text.trim(),
-        serialNumber: _serialNumberController.text.trim(),
+        serialNumber: serialNumInput,
         installationDate: _installationDate,
         serviceInterval: _serviceInterval,
         lastServiceDate: _lastServiceDate,
@@ -179,13 +223,16 @@ class _AddEditCustomerScreenState extends State<AddEditCustomerScreen> {
       }
 
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(isEdit ? 'Customer profile updated' : 'Customer added successfully'),
-            backgroundColor: AppTheme.statusCompleted,
-          ),
+        await _showSuccessDialog(
+          context,
+          title: isEdit ? 'Customer Updated!' : 'Customer Registered!',
+          message: isEdit
+              ? 'Changes for "${_nameController.text.trim()}" saved successfully.'
+              : 'Customer "${_nameController.text.trim()}" (S/N: $serialNumInput) registered.',
         );
-        Navigator.pop(context);
+        if (mounted) {
+          Navigator.pop(context);
+        }
       }
     } catch (e) {
       if (mounted) {
@@ -200,6 +247,7 @@ class _AddEditCustomerScreenState extends State<AddEditCustomerScreen> {
       if (mounted) {
         setState(() {
           _isSaving = false;
+          _isConfirmed = false; // Reset confirmation checkbox
         });
       }
     }
@@ -349,7 +397,20 @@ class _AddEditCustomerScreenState extends State<AddEditCustomerScreen> {
                         hintText: 'Enter unique serial number assigned to product',
                         prefixIcon: Icon(Icons.tag_rounded),
                       ),
-                      validator: (value) => value == null || value.trim().isEmpty ? 'Please enter a unique serial number' : null,
+                      validator: (value) {
+                        if (value == null || value.trim().isEmpty) {
+                          return 'Please enter a unique serial number';
+                        }
+                        final provider = Provider.of<CustomerProvider>(context, listen: false);
+                        final input = value.trim().toLowerCase();
+                        final hasDuplicate = provider.customers.any((c) =>
+                            c.serialNumber.trim().toLowerCase() == input &&
+                            (widget.customer == null || c.id != widget.customer!.id));
+                        if (hasDuplicate) {
+                          return 'This Serial Number is already registered to another customer!';
+                        }
+                        return null;
+                      },
                     ),
                     const SizedBox(height: 24.0),
 
@@ -465,16 +526,50 @@ class _AddEditCustomerScreenState extends State<AddEditCustomerScreen> {
                       maxLines: 3,
                       decoration: const InputDecoration(labelText: 'Machine/Client Notes', prefixIcon: Icon(Icons.notes_rounded)),
                     ),
-                    const SizedBox(height: 32.0),
+                    const SizedBox(height: 24.0),
+
+                    // Confirmation Checkbox Box
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                      decoration: BoxDecoration(
+                        color: _isConfirmed ? AppTheme.statusCompleted.withOpacity(0.08) : Colors.grey[100],
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                          color: _isConfirmed ? AppTheme.statusCompleted.withOpacity(0.4) : Colors.grey[300]!,
+                        ),
+                      ),
+                      child: Row(
+                        children: [
+                          Checkbox(
+                            value: _isConfirmed,
+                            activeColor: AppTheme.statusCompleted,
+                            onChanged: _isSaving
+                                ? null
+                                : (val) {
+                                    setState(() {
+                                      _isConfirmed = val ?? false;
+                                    });
+                                  },
+                          ),
+                          const Expanded(
+                            child: Text(
+                              'I confirm that all customer and serial number details are verified.',
+                              style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600, color: Colors.black87),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 20.0),
 
                     // Submit Button
                     ElevatedButton(
-                      onPressed: _isSaving ? null : _saveCustomer,
+                      onPressed: (_isSaving || !_isConfirmed) ? null : SafeTap.wrap(_saveCustomer),
                       child: _isSaving
                           ? const SizedBox(
                               height: 20,
                               width: 20,
-                              child: CircularProgressIndicator(strokeWidth: 2, color: AppTheme.primaryBlue),
+                              child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
                             )
                           : Text(isEdit ? 'SAVE CHANGES' : 'REGISTER CUSTOMER'),
                     ),

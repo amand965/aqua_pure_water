@@ -131,8 +131,10 @@ class DatabaseService {
   Future<void> addServiceRecord(ServiceRecord record, Customer customer) async {
     final batch = _db.batch();
 
-    // 1. Create a reference and add the service record
-    final serviceRef = _db.collection('services').doc();
+    // 1. Create a reference using record.id (idempotent write prevents duplicate documents)
+    final serviceRef = record.id.isNotEmpty
+        ? _db.collection('services').doc(record.id)
+        : _db.collection('services').doc();
     final serviceData = record.toMap();
     batch.set(serviceRef, serviceData);
 

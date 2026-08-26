@@ -23,7 +23,10 @@ class CustomerProvider with ChangeNotifier {
 
   // Getters
   List<Customer> get customers => _customers;
-  List<ServiceRecord> get completedServicesThisMonth => _completedServicesThisMonth;
+  List<ServiceRecord> get completedServicesThisMonth {
+    final seenIds = <String>{};
+    return _completedServicesThisMonth.where((s) => seenIds.add(s.id)).toList();
+  }
   bool get isLoading => _isLoading;
   String? get errorMessage => _errorMessage;
 
@@ -281,15 +284,22 @@ class CustomerProvider with ChangeNotifier {
       _customers[cIdx] = updatedCustomer;
     }
 
-    // Add service record
-    _completedServicesThisMonth.add(record);
-    // _triggerDueServicesNotification();
+    // Add service record (safely prevent duplicate entries)
+    if (!_completedServicesThisMonth.any((s) => s.id == record.id)) {
+      _completedServicesThisMonth.add(record);
+    }
     notifyListeners();
   }
 
   // Fetch service history for a specific customer
   Stream<List<ServiceRecord>> getCustomerServiceHistory(String customerId) {
     return _dbService.getServiceHistoryStream(customerId);
+  }
+
+  Future<void> deleteServiceRecord(String serviceId) async {
+    await _dbService.deleteServiceRecord(serviceId);
+    _completedServicesThisMonth.removeWhere((s) => s.id == serviceId);
+    notifyListeners();
   }
 
   // Advanced Search
