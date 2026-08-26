@@ -38,56 +38,22 @@ class _UpdateDialogState extends State<UpdateDialog> {
     }
 
     setState(() {
-      _isDownloading = true;
-      _hasError = false;
-      _statusMessage = 'Downloading update...';
-      _downloadProgress = '0%';
-      _progressValue = 0.0;
+      _isDownloading = false;
+      _statusMessage = 'Opening browser download...';
     });
 
     try {
-      OtaUpdate()
-          .execute(
-        widget.updateInfo.downloadUrl,
-        destinationFilename: 'aqua_pure_water.apk',
-      )
-          .listen(
-        (OtaEvent event) {
-          if (!mounted) return;
-          switch (event.status) {
-            case OtaStatus.DOWNLOADING:
-              final int progress = int.tryParse(event.value ?? '0') ?? 0;
-              setState(() {
-                _progressValue = progress / 100.0;
-                _downloadProgress = '$progress%';
-                _statusMessage = 'Downloading update ($progress%)...';
-              });
-              break;
-            case OtaStatus.INSTALLING:
-              setState(() {
-                _statusMessage = 'Launching installer...';
-              });
-              break;
-            case OtaStatus.ALREADY_RUNNING_ERROR:
-              _showError('Download already in progress.');
-              break;
-            case OtaStatus.PERMISSION_NOT_GRANTED_ERROR:
-              _showError('Storage/Install permission not granted.');
-              break;
-            case OtaStatus.INTERNAL_ERROR:
-            case OtaStatus.DOWNLOAD_ERROR:
-            case OtaStatus.CHECKSUM_ERROR:
-            default:
-              _fallbackToBrowserDownload('OTA download error: ${event.status}');
-              break;
-          }
-        },
-        onError: (error) {
-          _fallbackToBrowserDownload('Download failed: $error');
-        },
-      );
+      final Uri url = Uri.parse(widget.updateInfo.downloadUrl);
+      if (await canLaunchUrl(url)) {
+        await launchUrl(url, mode: LaunchMode.externalApplication);
+        if (mounted) {
+          Navigator.pop(context);
+        }
+      } else {
+        _showError('Could not launch download URL.');
+      }
     } catch (e) {
-      _fallbackToBrowserDownload('Could not start download: $e');
+      _showError('Download failed: $e');
     }
   }
 
@@ -224,21 +190,31 @@ class _UpdateDialogState extends State<UpdateDialog> {
             ],
 
             // Action Buttons
-            Row(
+            Column(
               children: [
-                if (!widget.updateInfo.isForceUpdate)
-                  Expanded(
-                    child: OutlinedButton(
-                      onPressed: _isDownloading ? null : () => Navigator.pop(context),
-                      child: const Text('LATER'),
+                Row(
+                  children: [
+                    if (!widget.updateInfo.isForceUpdate)
+                      Expanded(
+                        child: OutlinedButton(
+                          onPressed: _isDownloading ? null : () => Navigator.pop(context),
+                          child: const Text('LATER'),
+                        ),
+                      ),
+                    if (!widget.updateInfo.isForceUpdate) const SizedBox(width: 12),
+                    Expanded(
+                      child: ElevatedButton(
+                        onPressed: _isDownloading ? null : _startUpdate,
+                        child: Text(_isDownloading ? 'DOWNLOADING' : 'AUTO UPDATE'),
+                      ),
                     ),
-                  ),
-                if (!widget.updateInfo.isForceUpdate) const SizedBox(width: 12),
-                Expanded(
-                  child: ElevatedButton(
-                    onPressed: _isDownloading ? null : _startUpdate,
-                    child: Text(_isDownloading ? 'DOWNLOADING' : 'UPDATE NOW'),
-                  ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                TextButton.icon(
+                  icon: const Icon(Icons.open_in_browser_rounded, size: 18),
+                  label: const Text('Download via Browser / Chrome', style: TextStyle(fontSize: 12)),
+                  onPressed: _isDownloading ? null : () => _fallbackToBrowserDownload('Manual Browser Download Triggered'),
                 ),
               ],
             ),
