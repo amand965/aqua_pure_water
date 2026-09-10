@@ -10,6 +10,8 @@ class NotificationService {
 
   // Initialize the notification service
   Future<void> initialize() async {
+    if (kIsWeb) return;
+
     // Initialize Time Zones
     tz.initializeTimeZones();
 
@@ -29,7 +31,7 @@ class NotificationService {
     );
 
     // Request permissions for Android 13+
-    if (Platform.isAndroid) {
+    if (!kIsWeb && Platform.isAndroid) {
       await _localNotificationsPlugin
           .resolvePlatformSpecificImplementation<
               AndroidFlutterLocalNotificationsPlugin>()
@@ -43,6 +45,7 @@ class NotificationService {
     required int overdueCount,
     required int upcomingCount,
   }) async {
+    if (kIsWeb) return;
     if (todayCount == 0 && overdueCount == 0 && upcomingCount == 0) return;
 
     final String title = 'RO Service Schedule Update';
@@ -83,6 +86,7 @@ class NotificationService {
 
   // Schedule a daily notification at 9:00 AM to check for due services
   Future<void> scheduleDailyReminder() async {
+    if (kIsWeb) return;
     const AndroidNotificationDetails androidDetails = AndroidNotificationDetails(
       'meet_electronics_daily_id',
       'Meet Electronics Daily Reminder',

@@ -181,4 +181,17 @@ class DatabaseService {
             .map((doc) => ServiceRecord.fromMap(doc.data(), doc.id))
             .toList());
   }
+
+  // Get stream of all completed service records (all time)
+  Stream<List<ServiceRecord>> getAllServicesStream() {
+    return _db.collection('services')
+        .snapshots()
+        .map((snapshot) {
+          final list = snapshot.docs
+              .map((doc) => ServiceRecord.fromMap(doc.data(), doc.id))
+              .toList();
+          list.sort((a, b) => b.serviceDate.compareTo(a.serviceDate));
+          return list;
+        });
+  }
 }

@@ -145,4 +145,66 @@ void main() {
       expect(isVersionGreater('1.0.1', 'v1.0.1'), isFalse);
     });
   });
+
+  group('Multiple Alternate Contact Numbers Tests', () {
+    List<String> extractAllPhoneNumbers({
+      required String mobile,
+      required String alternateMobile,
+      required List<String> alternateMobiles,
+    }) {
+      final list = <String>[];
+      if (mobile.trim().isNotEmpty) {
+        list.add(mobile.trim());
+      }
+      for (final alt in alternateMobiles) {
+        final clean = alt.trim();
+        if (clean.isNotEmpty && !list.contains(clean)) {
+          list.add(clean);
+        }
+      }
+      if (alternateMobile.trim().isNotEmpty && !list.contains(alternateMobile.trim())) {
+        list.add(alternateMobile.trim());
+      }
+      return list;
+    }
+
+    test('Should collect primary and multiple alternate numbers in order without duplicates', () {
+      final numbers = extractAllPhoneNumbers(
+        mobile: '9876543210',
+        alternateMobile: '9123456780',
+        alternateMobiles: ['9123456780', '9988776655', '9876543210'],
+      );
+
+      expect(numbers.length, equals(3));
+      expect(numbers[0], equals('9876543210'));
+      expect(numbers[1], equals('9123456780'));
+      expect(numbers[2], equals('9988776655'));
+    });
+
+    test('Should handle legacy customer data with only alternateMobile string', () {
+      final numbers = extractAllPhoneNumbers(
+        mobile: '9876543210',
+        alternateMobile: '9123456780',
+        alternateMobiles: [],
+      );
+
+      expect(numbers.length, equals(2));
+      expect(numbers[0], equals('9876543210'));
+      expect(numbers[1], equals('9123456780'));
+    });
+
+    test('Should format 10-digit number for WhatsApp with 91 country code', () {
+      String formatWhatsApp(String mobile) {
+        String cleanNumber = mobile.replaceAll(RegExp(r'\D'), '');
+        if (cleanNumber.length == 10) {
+          cleanNumber = '91$cleanNumber';
+        }
+        return cleanNumber;
+      }
+
+      expect(formatWhatsApp('9876543210'), equals('919876543210'));
+      expect(formatWhatsApp('+91 98765-43210'), equals('919876543210'));
+      expect(formatWhatsApp('919876543210'), equals('919876543210'));
+    });
+  });
 }

@@ -8,7 +8,7 @@ class ServiceRecord {
   final String workDone;
   final String partsReplaced;
   final double charges;
-  final String paymentStatus; // 'Paid', 'Pending'
+  final String paymentStatus; // 'Paid', 'Pending', 'Free Service'
   final String notes;
   final List<String> photoUrls;
 

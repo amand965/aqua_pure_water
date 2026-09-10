@@ -25,7 +25,7 @@ class _AddEditCustomerScreenState extends State<AddEditCustomerScreen> {
   // Form Controllers
   final _nameController = TextEditingController();
   final _mobileController = TextEditingController();
-  final _alternateMobileController = TextEditingController();
+  final List<TextEditingController> _alternateMobileControllers = [];
   final _addressController = TextEditingController();
   final _productBrandController = TextEditingController();
   final _productModelController = TextEditingController();
@@ -54,7 +54,15 @@ class _AddEditCustomerScreenState extends State<AddEditCustomerScreen> {
       final c = widget.customer!;
       _nameController.text = c.name;
       _mobileController.text = c.mobile;
-      _alternateMobileController.text = c.alternateMobile;
+      if (c.alternateMobiles.isNotEmpty) {
+        for (final alt in c.alternateMobiles) {
+          if (alt.trim().isNotEmpty) {
+            _alternateMobileControllers.add(TextEditingController(text: alt.trim()));
+          }
+        }
+      } else if (c.alternateMobile.trim().isNotEmpty) {
+        _alternateMobileControllers.add(TextEditingController(text: c.alternateMobile.trim()));
+      }
       _addressController.text = c.address;
       _productBrandController.text = c.productBrand;
       _productModelController.text = c.productModel;
@@ -69,11 +77,26 @@ class _AddEditCustomerScreenState extends State<AddEditCustomerScreen> {
     }
   }
 
+  void _addAlternateNumberField() {
+    setState(() {
+      _alternateMobileControllers.add(TextEditingController());
+    });
+  }
+
+  void _removeAlternateNumberField(int index) {
+    setState(() {
+      _alternateMobileControllers[index].dispose();
+      _alternateMobileControllers.removeAt(index);
+    });
+  }
+
   @override
   void dispose() {
     _nameController.dispose();
     _mobileController.dispose();
-    _alternateMobileController.dispose();
+    for (final ctrl in _alternateMobileControllers) {
+      ctrl.dispose();
+    }
     _addressController.dispose();
     _productBrandController.dispose();
     _productModelController.dispose();
@@ -197,11 +220,18 @@ class _AddEditCustomerScreenState extends State<AddEditCustomerScreen> {
         finalPhotoUrl = await _uploadImage(targetId);
       }
 
+      final List<String> alternateMobiles = _alternateMobileControllers
+          .map((c) => c.text.trim())
+          .where((text) => text.isNotEmpty)
+          .toList();
+      final primaryAlternate = alternateMobiles.isNotEmpty ? alternateMobiles.first : '';
+
       final customerData = Customer(
         id: targetId,
         name: _nameController.text.trim(),
         mobile: _mobileController.text.trim(),
-        alternateMobile: _alternateMobileController.text.trim(),
+        alternateMobile: primaryAlternate,
+        alternateMobiles: alternateMobiles,
         address: _addressController.text.trim(),
         productBrand: _productBrandController.text.trim(),
         productModel: _productModelController.text.trim(),
@@ -256,7 +286,6 @@ class _AddEditCustomerScreenState extends State<AddEditCustomerScreen> {
   @override
   Widget build(BuildContext context) {
     final isEdit = widget.customer != null;
-    final dateFormat = DateFormat('dd MMM yyyy');
 
     return Scaffold(
       appBar: AppBar(
@@ -341,22 +370,65 @@ class _AddEditCustomerScreenState extends State<AddEditCustomerScreen> {
                     ),
                     const SizedBox(height: 16.0),
 
-                    TextFormField(
-                      controller: _alternateMobileController,
-                      keyboardType: TextInputType.phone,
-                      maxLength: 10,
-                      buildCounter: (context, {required currentLength, required isFocused, maxLength}) => null,
-                      decoration: const InputDecoration(labelText: 'Alternate Contact Number', prefixIcon: Icon(Icons.phone_outlined)),
-                      validator: (value) {
-                        if (value == null || value.trim().isEmpty) return null; // optional
-                        final clean = value.trim();
-                        if (clean.length != 10 || int.tryParse(clean) == null) {
-                          return 'Alternate number must be exactly 10 digits';
-                        }
-                        return null;
-                      },
+                    // Dynamic Alternate Mobile Numbers Section
+                    if (_alternateMobileControllers.isNotEmpty) ...[
+                      ..._alternateMobileControllers.asMap().entries.map((entry) {
+                        final index = entry.key;
+                        final ctrl = entry.value;
+                        return Padding(
+                          padding: const EdgeInsets.only(bottom: 12.0),
+                          child: Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Expanded(
+                                child: TextFormField(
+                                  controller: ctrl,
+                                  keyboardType: TextInputType.phone,
+                                  maxLength: 10,
+                                  buildCounter: (context, {required currentLength, required isFocused, maxLength}) => null,
+                                  decoration: InputDecoration(
+                                    labelText: 'Alternate Number ${index + 1}',
+                                    prefixIcon: const Icon(Icons.phone_outlined),
+                                    hintText: '10-digit mobile number',
+                                  ),
+                                  validator: (value) {
+                                    if (value == null || value.trim().isEmpty) return null; // optional if empty
+                                    final clean = value.trim();
+                                    if (clean.length != 10 || int.tryParse(clean) == null) {
+                                      return 'Alternate number must be exactly 10 digits';
+                                    }
+                                    return null;
+                                  },
+                                ),
+                              ),
+                              const SizedBox(width: 4),
+                              Padding(
+                                padding: const EdgeInsets.only(top: 4.0),
+                                child: IconButton(
+                                  icon: const Icon(Icons.remove_circle_outline_rounded, color: AppTheme.statusOverdue),
+                                  tooltip: 'Remove this alternate number',
+                                  onPressed: () => _removeAlternateNumberField(index),
+                                ),
+                              ),
+                            ],
+                          ),
+                        );
+                      }),
+                    ],
+
+                    // Button to add more alternate numbers with "+" icon
+                    Align(
+                      alignment: Alignment.centerLeft,
+                      child: TextButton.icon(
+                        icon: const Icon(Icons.add_circle_outline_rounded, size: 18),
+                        label: const Text(
+                          '+ Add Alternate Number',
+                          style: TextStyle(fontWeight: FontWeight.bold),
+                        ),
+                        onPressed: _addAlternateNumberField,
+                      ),
                     ),
-                    const SizedBox(height: 16.0),
+                    const SizedBox(height: 12.0),
 
                     TextFormField(
                       controller: _addressController,

@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:provider/provider.dart';
@@ -15,7 +16,19 @@ void main() async {
   String? initError;
 
   try {
-    await Firebase.initializeApp();
+    if (kIsWeb) {
+      await Firebase.initializeApp(
+        options: const FirebaseOptions(
+          apiKey: 'AIzaSyCysw8aEGMtIiE67fVVOGbo3rjKcqDNkvE',
+          appId: '1:371541432832:web:bc86f189c9023a7bead6e5',
+          messagingSenderId: '371541432832',
+          projectId: 'meet-electronics-ac083',
+          storageBucket: 'meet-electronics-ac083.firebasestorage.app',
+        ),
+      );
+    } else {
+      await Firebase.initializeApp();
+    }
     firebaseInitialized = true;
   } catch (e) {
     initError = e.toString();
@@ -40,16 +53,6 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // If Firebase failed to initialize (e.g. google-services.json missing),
-    // display a helpful configuration instructions screen instead of crashing.
-    if (!firebaseInitialized) {
-      return MaterialApp(
-        theme: AppTheme.lightTheme,
-        debugShowCheckedModeBanner: false,
-        home: FirebaseConfigErrorScreen(errorMessage: firebaseError),
-      );
-    }
-
     return MultiProvider(
       providers: [
         ChangeNotifierProvider<AuthProvider>(
@@ -63,7 +66,9 @@ class MyApp extends StatelessWidget {
         title: 'ME Service Manager',
         theme: AppTheme.lightTheme,
         debugShowCheckedModeBanner: false,
-        home: const SplashAnimationScreen(),
+        home: firebaseInitialized
+            ? const SplashAnimationScreen()
+            : FirebaseConfigErrorScreen(errorMessage: firebaseError),
       ),
     );
   }
@@ -170,11 +175,30 @@ class FirebaseConfigErrorScreen extends StatelessWidget {
                 ),
               ],
               const SizedBox(height: 32),
-              ElevatedButton(
-                onPressed: () {
-                  // Retry launch or exit
-                },
-                child: const Text('Try Again'),
+              Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton(
+                      onPressed: () {
+                        Navigator.of(context).pushReplacement(
+                          MaterialPageRoute(builder: (_) => const AuthWrapper()),
+                        );
+                      },
+                      child: const Text('Try Again'),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: ElevatedButton(
+                      onPressed: () {
+                        Navigator.of(context).pushReplacement(
+                          MaterialPageRoute(builder: (_) => const AuthWrapper()),
+                        );
+                      },
+                      child: const Text('Demo Mode'),
+                    ),
+                  ),
+                ],
               )
             ],
           ),

@@ -11,6 +11,7 @@ class CustomerProvider with ChangeNotifier {
 
   List<Customer> _customers = [];
   List<ServiceRecord> _completedServicesThisMonth = [];
+  List<ServiceRecord> _allServices = [];
   bool _isLoading = true;
   String? _errorMessage;
 
@@ -27,6 +28,12 @@ class CustomerProvider with ChangeNotifier {
     final seenIds = <String>{};
     return _completedServicesThisMonth.where((s) => seenIds.add(s.id)).toList();
   }
+  List<ServiceRecord> get allServices {
+    final seenIds = <String>{};
+    return _allServices.where((s) => seenIds.add(s.id)).toList();
+  }
+  int get totalFreeServicesCount => _allServices.where((s) => s.paymentStatus == 'Free Service' || (s.charges == 0.0 && s.paymentStatus.toLowerCase().contains('free'))).length;
+  int get freeServicesThisMonthCount => completedServicesThisMonth.where((s) => s.paymentStatus == 'Free Service' || (s.charges == 0.0 && s.paymentStatus.toLowerCase().contains('free'))).length;
   bool get isLoading => _isLoading;
   String? get errorMessage => _errorMessage;
 
@@ -111,14 +118,26 @@ class CustomerProvider with ChangeNotifier {
       }
     );
 
-    // Subscribe to completed services stream for current month
-    _servicesSubscription = _dbService.getCompletedServicesThisMonthStream().listen(
+    // Subscribe to all completed services stream
+    _servicesSubscription = _dbService.getAllServicesStream().listen(
       (servicesList) {
-        _completedServicesThisMonth = servicesList;
+        _allServices = servicesList;
+        _completedServicesThisMonth = servicesList.where((s) {
+          final now = DateTime.now();
+          return s.serviceDate.year == now.year && s.serviceDate.month == now.month;
+        }).toList();
         notifyListeners();
       },
       onError: (error) {
-        debugPrint("Error fetching monthly services: $error");
+        debugPrint("Error fetching all services: $error. Falling back to monthly stream.");
+        _dbService.getCompletedServicesThisMonthStream().listen(
+          (servicesList) {
+            _completedServicesThisMonth = servicesList;
+            _allServices = servicesList;
+            notifyListeners();
+          },
+          onError: (e) => debugPrint("Error fetching monthly services: $e"),
+        );
       }
     );
 
@@ -285,8 +304,11 @@ class CustomerProvider with ChangeNotifier {
     }
 
     // Add service record (safely prevent duplicate entries)
+    if (!_allServices.any((s) => s.id == record.id)) {
+      _allServices.insert(0, record);
+    }
     if (!_completedServicesThisMonth.any((s) => s.id == record.id)) {
-      _completedServicesThisMonth.add(record);
+      _completedServicesThisMonth.insert(0, record);
     }
     notifyListeners();
   }
@@ -298,6 +320,7 @@ class CustomerProvider with ChangeNotifier {
 
   Future<void> deleteServiceRecord(String serviceId) async {
     await _dbService.deleteServiceRecord(serviceId);
+    _allServices.removeWhere((s) => s.id == serviceId);
     _completedServicesThisMonth.removeWhere((s) => s.id == serviceId);
     notifyListeners();
   }
@@ -308,19 +331,21 @@ class CustomerProvider with ChangeNotifier {
     final lowercaseQuery = query.toLowerCase().trim();
 
     return _customers.where((c) {
+      final matchesAnyPhone = c.allPhoneNumbers.any((phone) => phone.toLowerCase().contains(lowercaseQuery));
+
       switch (filterType) {
         case 'Name':
           return c.name.toLowerCase().contains(lowercaseQuery);
         case 'Serial No.':
           return c.serialNumber.toLowerCase().contains(lowercaseQuery);
         case 'Mobile':
-          return c.mobile.contains(lowercaseQuery) || c.alternateMobile.contains(lowercaseQuery);
+          return matchesAnyPhone;
         case 'Address':
           return c.address.toLowerCase().contains(lowercaseQuery);
         case 'All':
         default:
           final nameMatch = c.name.toLowerCase().contains(lowercaseQuery);
-          final mobileMatch = c.mobile.contains(lowercaseQuery) || c.alternateMobile.contains(lowercaseQuery);
+          final mobileMatch = matchesAnyPhone;
           final modelMatch = c.productModel.toLowerCase().contains(lowercaseQuery) || c.productBrand.toLowerCase().contains(lowercaseQuery);
           final areaMatch = c.address.toLowerCase().contains(lowercaseQuery);
           final serialMatch = c.serialNumber.toLowerCase().contains(lowercaseQuery);

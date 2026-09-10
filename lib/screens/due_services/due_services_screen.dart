@@ -8,6 +8,7 @@ import '../customer/customer_details_screen.dart';
 import '../service/add_service_screen.dart';
 import '../../widgets/extend_pause_service_dialog.dart';
 import '../../widgets/safe_tap.dart';
+import '../../widgets/phone_action_bottom_sheet.dart';
 
 class DueServicesScreen extends StatefulWidget {
   final int initialIndex; // 0: Today, 1: Upcoming, 2: Overdue
@@ -35,46 +36,6 @@ class _DueServicesScreenState extends State<DueServicesScreen> with SingleTicker
   void dispose() {
     _tabController.dispose();
     super.dispose();
-  }
-
-  Future<void> _launchCall(BuildContext context, String mobile) async {
-    final cleanMobile = mobile.replaceAll(RegExp(r'\D'), '');
-    final url = Uri.parse("tel:$cleanMobile");
-    try {
-      if (await canLaunchUrl(url)) {
-        await launchUrl(url);
-      } else {
-        throw 'Cannot make phone call.';
-      }
-    } catch (e) {
-      _showErrorSnackBar(context, 'Could not launch dialer.');
-    }
-  }
-
-  Future<void> _launchWhatsApp(BuildContext context, String mobile, String customerName) async {
-    String cleanNumber = mobile.replaceAll(RegExp(r'\D'), '');
-    if (cleanNumber.length == 10) {
-      cleanNumber = '91$cleanNumber';
-    }
-
-    final message = "Hello $customerName,\n\n"
-        "This is Meet Electronics.\n"
-        "Your RO water purifier service is due.\n"
-        "Please reply to this message or call us to schedule your service.\n\n"
-        "Thank you.";
-
-    final url = Uri.parse("https://wa.me/$cleanNumber?text=${Uri.encodeComponent(message)}");
-    try {
-      await launchUrl(url, mode: LaunchMode.externalApplication);
-    } catch (e) {
-      _showErrorSnackBar(context, 'Could not launch WhatsApp.');
-    }
-  }
-
-  void _showErrorSnackBar(BuildContext context, String message) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(message), backgroundColor: AppTheme.statusOverdue),
-    );
   }
 
   int _calculateDaysDiff(DateTime date) {
@@ -275,7 +236,11 @@ class _DueServicesScreenState extends State<DueServicesScreen> with SingleTicker
                     backgroundColor: AppTheme.primaryBlue.withOpacity(0.1),
                     padding: const EdgeInsets.all(12),
                   ),
-                  onPressed: SafeTap.wrap(() => _launchCall(context, customer.mobile)),
+                  onPressed: SafeTap.wrap(() => PhoneActionBottomSheet.show(
+                    context: context,
+                    customer: customer,
+                    mode: PhoneActionMode.call,
+                  )),
                 ),
                 const SizedBox(width: 8),
 
@@ -286,7 +251,11 @@ class _DueServicesScreenState extends State<DueServicesScreen> with SingleTicker
                     backgroundColor: AppTheme.statusCompleted.withOpacity(0.1),
                     padding: const EdgeInsets.all(12),
                   ),
-                  onPressed: SafeTap.wrap(() => _launchWhatsApp(context, customer.mobile, customer.name)),
+                  onPressed: SafeTap.wrap(() => PhoneActionBottomSheet.show(
+                    context: context,
+                    customer: customer,
+                    mode: PhoneActionMode.whatsapp,
+                  )),
                 ),
                 const SizedBox(width: 8),
 

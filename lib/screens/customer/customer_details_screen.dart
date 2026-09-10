@@ -10,47 +10,12 @@ import '../service/add_service_screen.dart';
 import 'add_edit_customer_screen.dart';
 import '../../widgets/extend_pause_service_dialog.dart';
 import '../../widgets/safe_tap.dart';
+import '../../widgets/phone_action_bottom_sheet.dart';
 
 class CustomerDetailsScreen extends StatelessWidget {
   final String customerId;
 
   const CustomerDetailsScreen({super.key, required this.customerId});
-
-  Future<void> _launchCall(BuildContext context, String mobile) async {
-    final cleanMobile = mobile.replaceAll(RegExp(r'\D'), '');
-    final url = Uri.parse("tel:$cleanMobile");
-    try {
-      await launchUrl(url);
-    } catch (e) {
-      _showErrorSnackBar(context, 'Could not start call dialer.');
-    }
-  }
-
-  Future<void> _launchWhatsApp(BuildContext context, String mobile, String customerName) async {
-    String cleanNumber = mobile.replaceAll(RegExp(r'\D'), '');
-    if (cleanNumber.length == 10) {
-      cleanNumber = '91$cleanNumber'; // India country code
-    }
-
-    final message = "Hello $customerName,\n\n"
-        "This is Meet Electronics.\n"
-        "Your RO water purifier service is due.\n"
-        "Please reply to this message or call us to schedule your service.\n\n"
-        "Thank you.";
-
-    final url = Uri.parse("https://wa.me/$cleanNumber?text=${Uri.encodeComponent(message)}");
-    try {
-      await launchUrl(url, mode: LaunchMode.externalApplication);
-    } catch (e) {
-      _showErrorSnackBar(context, 'Could not open WhatsApp application.');
-    }
-  }
-
-  void _showErrorSnackBar(BuildContext context, String message) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(message), backgroundColor: AppTheme.statusOverdue),
-    );
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -108,21 +73,70 @@ class CustomerDetailsScreen extends StatelessWidget {
                   Row(
                     children: [
                       Expanded(
-                        child: OutlinedButton.icon(
-                          icon: const Icon(Icons.phone_rounded),
-                          label: const Text('CALL'),
-                          onPressed: () => _launchCall(context, customer.mobile),
+                        child: Container(
+                          height: 46,
+                          decoration: BoxDecoration(
+                            gradient: const LinearGradient(
+                              colors: [Color(0xFF0D47A1), Color(0xFF1976D2)],
+                            ),
+                            borderRadius: BorderRadius.circular(14),
+                            boxShadow: [
+                              BoxShadow(
+                                color: AppTheme.primaryBlue.withOpacity(0.3),
+                                blurRadius: 10,
+                                offset: const Offset(0, 4),
+                              ),
+                            ],
+                          ),
+                          child: ElevatedButton.icon(
+                            icon: const Icon(Icons.phone_rounded, color: Colors.white, size: 18),
+                            label: const Text('CALL', style: TextStyle(fontWeight: FontWeight.bold, letterSpacing: 0.5)),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.transparent,
+                              shadowColor: Colors.transparent,
+                              foregroundColor: Colors.white,
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                            ),
+                            onPressed: () => PhoneActionBottomSheet.show(
+                              context: context,
+                              customer: customer,
+                              mode: PhoneActionMode.call,
+                            ),
+                          ),
                         ),
                       ),
                       const SizedBox(width: 12),
                       Expanded(
-                        child: ElevatedButton.icon(
-                          icon: const Icon(Icons.message_rounded),
-                          label: const Text('WHATSAPP'),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: AppTheme.statusCompleted,
+                        child: Container(
+                          height: 46,
+                          decoration: BoxDecoration(
+                            gradient: const LinearGradient(
+                              colors: [Color(0xFF1B5E20), Color(0xFF388E3C)],
+                            ),
+                            borderRadius: BorderRadius.circular(14),
+                            boxShadow: [
+                              BoxShadow(
+                                color: AppTheme.statusCompleted.withOpacity(0.3),
+                                blurRadius: 10,
+                                offset: const Offset(0, 4),
+                              ),
+                            ],
                           ),
-                          onPressed: () => _launchWhatsApp(context, customer.mobile, customer.name),
+                          child: ElevatedButton.icon(
+                            icon: const Icon(Icons.message_rounded, color: Colors.white, size: 18),
+                            label: const Text('WHATSAPP', style: TextStyle(fontWeight: FontWeight.bold, letterSpacing: 0.5)),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.transparent,
+                              shadowColor: Colors.transparent,
+                              foregroundColor: Colors.white,
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                            ),
+                            onPressed: () => PhoneActionBottomSheet.show(
+                              context: context,
+                              customer: customer,
+                              mode: PhoneActionMode.whatsapp,
+                            ),
+                          ),
                         ),
                       ),
                     ],
@@ -163,68 +177,104 @@ class CustomerDetailsScreen extends StatelessWidget {
     );
   }
 
-  // Beautiful Header Profile card showing photo name brand
+  // Beautiful Header Profile card with ocean gradient
   Widget _buildProfileHeader(BuildContext context, Customer customer) {
     return Container(
       padding: const EdgeInsets.all(20.0),
       margin: const EdgeInsets.all(16.0),
       decoration: BoxDecoration(
-        color: AppTheme.lightBlueBackground,
-        borderRadius: BorderRadius.circular(20.0),
-        border: Border.all(color: AppTheme.primaryBlue.withOpacity(0.15), width: 1),
-      ),
-      child: Row(
-        children: [
-          CircleAvatar(
-            radius: 40,
-            backgroundColor: Colors.white,
-            backgroundImage: customer.photoUrl != null && customer.photoUrl!.isNotEmpty
-                ? NetworkImage(customer.photoUrl!)
-                : null,
-            child: customer.photoUrl == null || customer.photoUrl!.isEmpty
-                ? const Icon(Icons.person_rounded, size: 44, color: AppTheme.primaryBlue)
-                : null,
+        gradient: AppTheme.oceanGradient,
+        borderRadius: BorderRadius.circular(24.0),
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0xFF0D47A1).withOpacity(0.30),
+            blurRadius: 18.0,
+            offset: const Offset(0, 8),
           ),
-          const SizedBox(width: 20.0),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  customer.name,
-                  style: const TextStyle(
-                    fontSize: 20.0,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.black87,
-                  ),
+        ],
+      ),
+      child: Stack(
+        children: [
+          Positioned(
+            right: -20,
+            bottom: -20,
+            child: Icon(
+              Icons.water_drop_rounded,
+              size: 80,
+              color: Colors.white.withOpacity(0.12),
+            ),
+          ),
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(3),
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  border: Border.all(color: Colors.white.withOpacity(0.6), width: 2),
                 ),
-                const SizedBox(height: 6.0),
-                Row(
+                child: CircleAvatar(
+                  radius: 36,
+                  backgroundColor: Colors.white,
+                  backgroundImage: customer.photoUrl != null && customer.photoUrl!.isNotEmpty
+                      ? NetworkImage(customer.photoUrl!)
+                      : null,
+                  child: customer.photoUrl == null || customer.photoUrl!.isEmpty
+                      ? const Icon(Icons.person_rounded, size: 40, color: AppTheme.primaryBlue)
+                      : null,
+                ),
+              ),
+              const SizedBox(width: 18.0),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Icon(Icons.devices_other_rounded, size: 16, color: AppTheme.primaryBlue),
-                    const SizedBox(width: 4),
-                    Expanded(
-                      child: Text(
-                        '${customer.productBrand} (${customer.productModel})',
-                        style: const TextStyle(
-                          fontSize: 14.0,
-                          fontWeight: FontWeight.w600,
-                          color: Colors.black54,
-                        ),
+                    Text(
+                      customer.name,
+                      style: const TextStyle(
+                        fontSize: 21.0,
+                        fontWeight: FontWeight.w800,
+                        color: Colors.white,
+                        letterSpacing: -0.3,
                       ),
+                    ),
+                    const SizedBox(height: 6.0),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withOpacity(0.2),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Icon(Icons.devices_other_rounded, size: 14, color: Colors.white),
+                          const SizedBox(width: 4),
+                          Flexible(
+                            child: Text(
+                              '${customer.productBrand} (${customer.productModel})',
+                              style: const TextStyle(
+                                fontSize: 12.5,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.white,
+                              ),
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 6.0),
+                    Text(
+                      customer.address,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(fontSize: 12.0, color: Colors.white.withOpacity(0.85)),
                     ),
                   ],
                 ),
-                const SizedBox(height: 4.0),
-                Text(
-                  customer.address,
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(fontSize: 12.0, color: Colors.black45),
-                ),
-              ],
-            ),
-          )
+              ),
+            ],
+          ),
         ],
       ),
     );
@@ -245,7 +295,15 @@ class CustomerDetailsScreen extends StatelessWidget {
             const Divider(height: 20),
             _buildDetailRow(Icons.phone_rounded, 'Mobile Number', customer.mobile),
             _buildDetailRow(Icons.tag_rounded, 'Serial Number', customer.serialNumber.isNotEmpty ? customer.serialNumber : 'N/A'),
-            if (customer.alternateMobile.isNotEmpty)
+            if (customer.alternateMobiles.isNotEmpty)
+              ...customer.alternateMobiles.asMap().entries.map(
+                    (entry) => _buildDetailRow(
+                      Icons.phone_paused_rounded,
+                      'Alternate Contact ${entry.key + 1}',
+                      entry.value,
+                    ),
+                  )
+            else if (customer.alternateMobile.isNotEmpty)
               _buildDetailRow(Icons.phone_paused_rounded, 'Alternate Contact', customer.alternateMobile),
             _buildDetailRow(Icons.calendar_month_rounded, 'Installation Date', dateFormat.format(customer.installationDate)),
             _buildDetailRow(Icons.timelapse_rounded, 'Service Interval', 'Every ${customer.serviceInterval} Months'),
@@ -473,6 +531,10 @@ class CustomerDetailsScreen extends StatelessWidget {
   // Single card element in the service history timeline
   Widget _buildTimelineItem(BuildContext context, ServiceRecord record, DateFormat dateFormat) {
     final isPaid = record.paymentStatus == 'Paid';
+    final isFree = record.paymentStatus == 'Free Service' || (record.charges == 0.0 && record.paymentStatus.toLowerCase().contains('free'));
+    final Color statusColor = isPaid
+        ? AppTheme.statusCompleted
+        : (isFree ? AppTheme.statusFree : AppTheme.statusOverdue);
 
     return Container(
       margin: const EdgeInsets.only(bottom: 16.0),
@@ -499,13 +561,14 @@ class CustomerDetailsScreen extends StatelessWidget {
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                       decoration: BoxDecoration(
-                        color: (isPaid ? AppTheme.statusCompleted : AppTheme.statusOverdue).withOpacity(0.1),
+                        color: statusColor.withOpacity(0.12),
                         borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: statusColor.withOpacity(0.3), width: 1),
                       ),
                       child: Text(
                         record.paymentStatus.toUpperCase(),
                         style: TextStyle(
-                          color: isPaid ? AppTheme.statusCompleted : AppTheme.statusOverdue,
+                          color: statusColor,
                           fontWeight: FontWeight.bold,
                           fontSize: 11,
                         ),
@@ -530,7 +593,7 @@ class CustomerDetailsScreen extends StatelessWidget {
             _buildTimelineRow('Work Done', record.workDone),
             if (record.partsReplaced.isNotEmpty)
               _buildTimelineRow('Parts Changed', record.partsReplaced),
-            _buildTimelineRow('Charges', '₹ ${record.charges.toStringAsFixed(2)}'),
+            _buildTimelineRow('Charges', isFree ? '₹ 0.00 (Free Service)' : '₹ ${record.charges.toStringAsFixed(2)}'),
             if (record.notes.isNotEmpty) ...[
               const SizedBox(height: 8),
               Text(

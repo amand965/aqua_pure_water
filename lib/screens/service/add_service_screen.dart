@@ -144,7 +144,7 @@ class _AddServiceScreenState extends State<AddServiceScreen> {
         technicianName: _technicianController.text.trim(),
         workDone: _workDoneController.text.trim(),
         partsReplaced: _partsController.text.trim(),
-        charges: double.tryParse(_chargesController.text) ?? 0.0,
+        charges: _paymentStatus == 'Free Service' ? 0.0 : (double.tryParse(_chargesController.text) ?? 0.0),
         paymentStatus: _paymentStatus,
         notes: _notesController.text.trim(),
         photoUrls: photoUrls,
@@ -210,21 +210,83 @@ class _AddServiceScreenState extends State<AddServiceScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    // Client Info Banner
+                    // Client Info Banner (Graphically Rich Card)
                     Container(
-                      padding: const EdgeInsets.all(12),
+                      padding: const EdgeInsets.all(16),
                       decoration: BoxDecoration(
-                        color: AppTheme.lightBlueBackground,
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: AppTheme.primaryBlue.withOpacity(0.1)),
+                        gradient: LinearGradient(
+                          colors: [
+                            AppTheme.primaryBlue.withOpacity(0.09),
+                            AppTheme.accentBlue.withOpacity(0.03),
+                          ],
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                        ),
+                        borderRadius: BorderRadius.circular(18),
+                        border: Border.all(color: AppTheme.primaryBlue.withOpacity(0.2), width: 1.2),
+                        boxShadow: [
+                          BoxShadow(
+                            color: AppTheme.primaryBlue.withOpacity(0.06),
+                            blurRadius: 12,
+                            offset: const Offset(0, 4),
+                          ),
+                        ],
                       ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
+                      child: Row(
                         children: [
-                          const Text('CUSTOMER', style: TextStyle(fontSize: 10, color: Colors.grey, fontWeight: FontWeight.bold)),
-                          Text(widget.customer.name, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-                          const SizedBox(height: 4),
-                          Text('${widget.customer.productBrand} - ${widget.customer.productModel}', style: const TextStyle(fontSize: 13, color: Colors.black54)),
+                          CircleAvatar(
+                            radius: 24,
+                            backgroundColor: AppTheme.primaryBlue.withOpacity(0.15),
+                            backgroundImage: widget.customer.photoUrl != null && widget.customer.photoUrl!.isNotEmpty
+                                ? NetworkImage(widget.customer.photoUrl!)
+                                : null,
+                            child: widget.customer.photoUrl == null || widget.customer.photoUrl!.isEmpty
+                                ? const Icon(Icons.person_rounded, color: AppTheme.primaryBlue, size: 28)
+                                : null,
+                          ),
+                          const SizedBox(width: 14),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Row(
+                                  children: [
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                      decoration: BoxDecoration(
+                                        color: AppTheme.primaryBlue.withOpacity(0.12),
+                                        borderRadius: BorderRadius.circular(6),
+                                      ),
+                                      child: const Text(
+                                        'CUSTOMER',
+                                        style: TextStyle(
+                                          fontSize: 9.5,
+                                          fontWeight: FontWeight.bold,
+                                          color: AppTheme.primaryBlue,
+                                          letterSpacing: 0.5,
+                                        ),
+                                      ),
+                                    ),
+                                    const SizedBox(width: 8),
+                                    Text(
+                                      widget.customer.mobile,
+                                      style: const TextStyle(fontSize: 12, color: Colors.black54, fontWeight: FontWeight.w600),
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(height: 4),
+                                Text(
+                                  widget.customer.name,
+                                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16.5, color: Colors.black87),
+                                ),
+                                const SizedBox(height: 2),
+                                Text(
+                                  '${widget.customer.productBrand} • ${widget.customer.productModel}',
+                                  style: const TextStyle(fontSize: 12.5, color: Colors.black54),
+                                ),
+                              ],
+                            ),
+                          ),
                         ],
                       ),
                     ),
@@ -283,16 +345,27 @@ class _AddServiceScreenState extends State<AddServiceScreen> {
 
                     // Charges Input
                     Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Expanded(
                           child: TextFormField(
                             controller: _chargesController,
                             keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                            decoration: const InputDecoration(
+                            enabled: _paymentStatus != 'Free Service',
+                            decoration: InputDecoration(
                               labelText: 'Charges (₹)*',
-                              prefixIcon: Icon(Icons.currency_rupee_rounded),
+                              prefixIcon: const Icon(Icons.currency_rupee_rounded),
+                              helperText: _paymentStatus == 'Free Service' ? 'Free Service (₹0.00)' : null,
+                              helperStyle: const TextStyle(
+                                color: AppTheme.statusFree,
+                                fontWeight: FontWeight.bold,
+                                fontSize: 11.5,
+                              ),
+                              filled: _paymentStatus == 'Free Service',
+                              fillColor: _paymentStatus == 'Free Service' ? Colors.grey[100] : null,
                             ),
                             validator: (value) {
+                              if (_paymentStatus == 'Free Service') return null;
                               if (value == null || value.trim().isEmpty) return 'Enter charges';
                               if (double.tryParse(value) == null) return 'Enter a valid amount';
                               return null;
@@ -312,11 +385,18 @@ class _AddServiceScreenState extends State<AddServiceScreen> {
                             items: const [
                               DropdownMenuItem(value: 'Paid', child: Text('Paid')),
                               DropdownMenuItem(value: 'Pending', child: Text('Pending')),
+                              DropdownMenuItem(
+                                value: 'Free Service',
+                                child: Text('Free Service', style: TextStyle(color: AppTheme.statusFree, fontWeight: FontWeight.bold)),
+                              ),
                             ],
                             onChanged: (val) {
                               if (val != null) {
                                 setState(() {
                                   _paymentStatus = val;
+                                  if (_paymentStatus == 'Free Service') {
+                                    _chargesController.text = '0.00';
+                                  }
                                 });
                               }
                             },
@@ -377,10 +457,38 @@ class _AddServiceScreenState extends State<AddServiceScreen> {
                     ),
                     const SizedBox(height: 20.0),
 
-                    // Submit Button
-                    ElevatedButton(
-                      onPressed: (_isSaving || !_isConfirmed) ? null : SafeTap.wrap(_saveService),
-                      child: const Text('SUBMIT & MARK COMPLETED'),
+                    // Submit Button (Elevated Gradient Pill)
+                    Container(
+                      height: 50,
+                      decoration: BoxDecoration(
+                        gradient: (_isSaving || !_isConfirmed)
+                            ? null
+                            : AppTheme.oceanGradient,
+                        borderRadius: BorderRadius.circular(16),
+                        boxShadow: (_isSaving || !_isConfirmed)
+                            ? null
+                            : [
+                                BoxShadow(
+                                  color: AppTheme.primaryBlue.withOpacity(0.35),
+                                  blurRadius: 14,
+                                  offset: const Offset(0, 5),
+                                ),
+                              ],
+                      ),
+                      child: ElevatedButton.icon(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: (_isSaving || !_isConfirmed) ? Colors.grey[300] : Colors.transparent,
+                          shadowColor: Colors.transparent,
+                          foregroundColor: (_isSaving || !_isConfirmed) ? Colors.grey[600] : Colors.white,
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                        ),
+                        onPressed: (_isSaving || !_isConfirmed) ? null : SafeTap.wrap(_saveService),
+                        icon: const Icon(Icons.check_circle_rounded, size: 20),
+                        label: const Text(
+                          'SUBMIT & MARK COMPLETED',
+                          style: TextStyle(fontWeight: FontWeight.bold, letterSpacing: 0.5),
+                        ),
+                      ),
                     ),
                     const SizedBox(height: 24),
                   ],

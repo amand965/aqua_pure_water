@@ -4,7 +4,8 @@ class Customer {
   final String id;
   final String name;
   final String mobile;
-  final String alternateMobile;
+  final String alternateMobile; // Maintained for backward compatibility
+  final List<String> alternateMobiles; // Multiple alternate contact numbers
   final String address;
   final String serialNumber; // Unique serial number for product tracking
   final String productBrand;
@@ -22,7 +23,8 @@ class Customer {
     required this.id,
     required this.name,
     required this.mobile,
-    required this.alternateMobile,
+    this.alternateMobile = '',
+    this.alternateMobiles = const [],
     required this.address,
     this.serialNumber = '', // Optional with default empty string to prevent compile breakage
     required this.productBrand,
@@ -37,6 +39,24 @@ class Customer {
     this.photoUrl,
   });
 
+  /// Returns all unique phone numbers for this customer (primary mobile first, followed by alternates)
+  List<String> get allPhoneNumbers {
+    final list = <String>[];
+    if (mobile.trim().isNotEmpty) {
+      list.add(mobile.trim());
+    }
+    for (final alt in alternateMobiles) {
+      final clean = alt.trim();
+      if (clean.isNotEmpty && !list.contains(clean)) {
+        list.add(clean);
+      }
+    }
+    if (alternateMobile.trim().isNotEmpty && !list.contains(alternateMobile.trim())) {
+      list.add(alternateMobile.trim());
+    }
+    return list;
+  }
+
   // Create a Customer from a Firestore Document
   factory Customer.fromMap(Map<String, dynamic> map, String documentId) {
     DateTime? toDateTime(dynamic value) {
@@ -50,11 +70,32 @@ class Customer {
       return null;
     }
 
+    List<String> parseAlternateMobiles(dynamic value, dynamic legacyValue) {
+      final list = <String>[];
+      if (value is List) {
+        for (var item in value) {
+          final str = item?.toString().trim() ?? '';
+          if (str.isNotEmpty && !list.contains(str)) {
+            list.add(str);
+          }
+        }
+      } else if (legacyValue != null && legacyValue.toString().trim().isNotEmpty) {
+        list.add(legacyValue.toString().trim());
+      }
+      return list;
+    }
+
+    final parsedAlternateMobiles = parseAlternateMobiles(map['alternateMobiles'], map['alternateMobile']);
+    final primaryAlternate = parsedAlternateMobiles.isNotEmpty 
+        ? parsedAlternateMobiles.first 
+        : (map['alternateMobile'] ?? '');
+
     return Customer(
       id: documentId,
       name: map['name'] ?? '',
       mobile: map['mobile'] ?? '',
-      alternateMobile: map['alternateMobile'] ?? '',
+      alternateMobile: primaryAlternate,
+      alternateMobiles: parsedAlternateMobiles,
       address: map['address'] ?? '',
       serialNumber: map['serialNumber'] ?? '', // maps serialNumber with default fallback
       productBrand: map['productBrand'] ?? map['roBrand'] ?? '',
@@ -77,7 +118,8 @@ class Customer {
     return {
       'name': name,
       'mobile': mobile,
-      'alternateMobile': alternateMobile,
+      'alternateMobile': alternateMobile.isNotEmpty ? alternateMobile : (alternateMobiles.isNotEmpty ? alternateMobiles.first : ''),
+      'alternateMobiles': alternateMobiles,
       'address': address,
       'serialNumber': serialNumber,
       'productBrand': productBrand,
@@ -99,6 +141,7 @@ class Customer {
     String? name,
     String? mobile,
     String? alternateMobile,
+    List<String>? alternateMobiles,
     String? address,
     String? serialNumber,
     String? productBrand,
@@ -117,6 +160,7 @@ class Customer {
       name: name ?? this.name,
       mobile: mobile ?? this.mobile,
       alternateMobile: alternateMobile ?? this.alternateMobile,
+      alternateMobiles: alternateMobiles ?? this.alternateMobiles,
       address: address ?? this.address,
       serialNumber: serialNumber ?? this.serialNumber,
       productBrand: productBrand ?? this.productBrand,

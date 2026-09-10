@@ -13,6 +13,55 @@ class AppTheme {
   static const Color statusDueToday = Color(0xFFF57C00); // Amber Orange
   static const Color statusUpcoming = Color(0xFF0288D1); // Light Blue
   static const Color statusCompleted = Color(0xFF388E3C); // Forest Green
+  static const Color statusFree = Color(0xFF7B1FA2); // Purple / Violet for Free Service
+
+  // Rich Gradients & Aesthetics
+  static const LinearGradient oceanGradient = LinearGradient(
+    colors: [Color(0xFF0D47A1), Color(0xFF1976D2), Color(0xFF00B4D8)],
+    begin: Alignment.topLeft,
+    end: Alignment.bottomRight,
+  );
+
+  static const LinearGradient aquaWaveGradient = LinearGradient(
+    colors: [Color(0xFF0077B6), Color(0xFF00B4D8)],
+    begin: Alignment.topLeft,
+    end: Alignment.bottomRight,
+  );
+
+  static const LinearGradient cardGreenGradient = LinearGradient(
+    colors: [Color(0xFF2E7D32), Color(0xFF43A047)],
+    begin: Alignment.topLeft,
+    end: Alignment.bottomRight,
+  );
+
+  static const LinearGradient cardAmberGradient = LinearGradient(
+    colors: [Color(0xFFE65100), Color(0xFFFB8C00)],
+    begin: Alignment.topLeft,
+    end: Alignment.bottomRight,
+  );
+
+  static const LinearGradient cardRedGradient = LinearGradient(
+    colors: [Color(0xFFC62828), Color(0xFFE53935)],
+    begin: Alignment.topLeft,
+    end: Alignment.bottomRight,
+  );
+
+  static const LinearGradient cardPurpleGradient = LinearGradient(
+    colors: [Color(0xFF6A1B9A), Color(0xFF8E24AA)],
+    begin: Alignment.topLeft,
+    end: Alignment.bottomRight,
+  );
+
+  // Soft Ambient Glow Shadows
+  static List<BoxShadow> glowShadow(Color color, {double opacity = 0.22, double blurRadius = 14, Offset offset = const Offset(0, 6)}) {
+    return [
+      BoxShadow(
+        color: color.withOpacity(opacity),
+        blurRadius: blurRadius,
+        offset: offset,
+      ),
+    ];
+  }
 
   static ThemeData get lightTheme {
     return ThemeData(
