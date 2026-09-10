@@ -32,25 +32,45 @@ class _UpdateDialogState extends State<UpdateDialog> {
   bool _hasError = false;
 
   Future<void> _startUpdate() async {
-    if (widget.updateInfo.downloadUrl.isEmpty) {
+    final rawUrl = widget.updateInfo.downloadUrl.trim();
+    if (rawUrl.isEmpty) {
       _showError('Invalid download URL provided.');
       return;
     }
 
     setState(() {
       _isDownloading = false;
+      _hasError = false;
       _statusMessage = 'Opening browser download...';
     });
 
     try {
-      final Uri url = Uri.parse(widget.updateInfo.downloadUrl);
-      if (await canLaunchUrl(url)) {
-        await launchUrl(url, mode: LaunchMode.externalApplication);
+      final cleanUrl = rawUrl.startsWith('http://') || rawUrl.startsWith('https://')
+          ? rawUrl
+          : 'https://$rawUrl';
+      final Uri url = Uri.parse(cleanUrl);
+
+      bool launched = false;
+      try {
+        launched = await launchUrl(url, mode: LaunchMode.externalApplication);
+      } catch (e) {
+        debugPrint("externalApplication launch failed: $e");
+      }
+
+      if (!launched) {
+        try {
+          launched = await launchUrl(url, mode: LaunchMode.platformDefault);
+        } catch (e) {
+          debugPrint("platformDefault launch failed: $e");
+        }
+      }
+
+      if (launched) {
         if (mounted) {
           Navigator.pop(context);
         }
       } else {
-        _showError('Could not launch download URL.');
+        _showError('Could not launch browser. Please open link manually:\n$cleanUrl');
       }
     } catch (e) {
       _showError('Download failed: $e');
@@ -60,19 +80,38 @@ class _UpdateDialogState extends State<UpdateDialog> {
   Future<void> _fallbackToBrowserDownload(String reason) async {
     debugPrint("$reason. Fallback to external browser launcher.");
     if (!mounted) return;
-    
+
+    final rawUrl = widget.updateInfo.downloadUrl.trim();
+    if (rawUrl.isEmpty) {
+      _showError('Invalid download URL provided.');
+      return;
+    }
+
     setState(() {
       _isDownloading = false;
-      _hasError = true;
+      _hasError = false;
       _statusMessage = 'Redirecting to direct download link...';
     });
 
     try {
-      final Uri url = Uri.parse(widget.updateInfo.downloadUrl);
-      if (await canLaunchUrl(url)) {
-        await launchUrl(url, mode: LaunchMode.externalApplication);
-      } else {
-        _showError('Could not launch download URL.');
+      final cleanUrl = rawUrl.startsWith('http://') || rawUrl.startsWith('https://')
+          ? rawUrl
+          : 'https://$rawUrl';
+      final Uri url = Uri.parse(cleanUrl);
+
+      bool launched = false;
+      try {
+        launched = await launchUrl(url, mode: LaunchMode.externalApplication);
+      } catch (_) {}
+
+      if (!launched) {
+        try {
+          launched = await launchUrl(url, mode: LaunchMode.platformDefault);
+        } catch (_) {}
+      }
+
+      if (!launched) {
+        _showError('Could not launch browser. Link:\n$cleanUrl');
       }
     } catch (e) {
       _showError('Direct download failed: $e');
@@ -148,7 +187,9 @@ class _UpdateDialogState extends State<UpdateDialog> {
                   ),
                   const SizedBox(height: 6),
                   Text(
-                    widget.updateInfo.releaseNotes,
+                    widget.updateInfo.releaseNotes
+                        .replaceAll(RegExp(r'<br\s*/?>', caseSensitive: false), '\n')
+                        .trim(),
                     style: const TextStyle(fontSize: 12, color: Colors.black87, height: 1.4),
                   ),
                 ],
